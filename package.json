@@ -3,20 +3,57 @@
   "displayName": "LSP MCP Bridge",
   "description": "VSCode extension that exposes Language Server Protocol capabilities as MCP tools",
   "version": "0.0.1",
+  "publisher": "sehejjain",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/user/lsp-mcp-bridge.git"
+    "url": "https://github.com/sehejjain/Language-Server-MCP-Bridge.git"
   },
+  "bugs": {
+    "url": "https://github.com/sehejjain/Language-Server-MCP-Bridge/issues"
+  },
+  "homepage": "https://github.com/sehejjain/Language-Server-MCP-Bridge#readme",
   "engines": {
-    "vscode": "^1.103.0"
+    "vscode": "^1.75.0"
   },
+  "keywords": [
+    "lsp",
+    "language-server",
+    "mcp",
+    "model-context-protocol",
+    "copilot",
+    "ai",
+    "github-copilot",
+    "programming-languages",
+    "developer-tools",
+    "code-navigation",
+    "intellisense",
+    "autocomplete"
+  ],
   "categories": [
-    "AI",
+    "Programming Languages",
     "Other"
   ],
+  "files": [
+    "out/**/*",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "package.json",
+    "images/icon.png"
+  ],
   "activationEvents": [
-    "*"
+    "onLanguage:javascript",
+    "onLanguage:typescript", 
+    "onLanguage:python",
+    "onLanguage:java",
+    "onLanguage:cpp",
+    "onLanguage:c",
+    "onLanguage:csharp",
+    "onLanguage:go",
+    "onLanguage:rust",
+    "onLanguage:php",
+    "onLanguage:ruby"
   ],
   "main": "./out/extension.js",
   "contributes": {
