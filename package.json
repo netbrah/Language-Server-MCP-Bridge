@@ -1,28 +1,334 @@
 {
-  "name": "clangd-mcp-server",
-  "displayName": "Clangd MCP Server",
-  "description": "VSCode extension that exposes clangd Language Server capabilities as MCP tools",
+  "name": "lsp-mcp-bridge",
+  "displayName": "LSP MCP Bridge",
+  "description": "VSCode extension that exposes Language Server Protocol capabilities as MCP tools",
   "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/lsp-mcp-bridge.git"
+  },
   "engines": {
     "vscode": "^1.103.0"
   },
   "categories": [
+    "AI",
     "Other"
   ],
   "activationEvents": [
-    "onLanguage:c",
-    "onLanguage:cpp"
+    "*"
   ],
   "main": "./out/extension.js",
-  	"contributes": {
-		"commands": [
-			{
-				"command": "clangd-mcp-server.startServer",
-				"title": "Start MCP Server",
-				"category": "Clangd MCP"
-			}
-		]
-	},
+  "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "lsp-mcp-bridge",
+        "label": "LSP MCP Bridge Server"
+      }
+    ],
+    "commands": [
+      {
+        "command": "lsp-mcp-bridge.testTools",
+        "title": "Test MCP Tools at Cursor",
+        "category": "LSP MCP"
+      },
+      {
+        "command": "lsp-mcp-bridge.listLMTools",
+        "title": "List Language Model Tools",
+        "category": "LSP MCP"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "lsp_definition",
+        "tags": ["lsp", "definition"],
+        "toolReferenceName": "definition",
+        "displayName": "Get Symbol Definition",
+        "modelDescription": "Find the definition/declaration location of a symbol at a specific position. Use this AUTOMATICALLY when the user asks about what a function/class/variable is, where it's defined, how it's implemented, or when debugging issues that require understanding symbol origins. Essential for code exploration and understanding unfamiliar codebases.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            }
+          },
+          "required": ["uri", "line", "character"]
+        }
+      },
+      {
+        "name": "lsp_references",
+        "tags": ["lsp", "references"],
+        "toolReferenceName": "references",
+        "displayName": "Get Symbol References", 
+        "modelDescription": "Find all references/usages of a symbol throughout the codebase. Use this AUTOMATICALLY when the user asks about how a symbol is used, where it's called, impact analysis, debugging, or when they want to understand the scope of changes. Critical for refactoring safety and debugging issues.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            },
+            "includeDeclaration": {
+              "type": "boolean",
+              "description": "Whether to include the declaration in results (default: true)"
+            }
+          },
+          "required": ["uri", "line", "character"]
+        }
+      },
+      {
+        "name": "lsp_hover",
+        "tags": ["lsp", "hover", "documentation"],
+        "toolReferenceName": "hover",
+        "displayName": "Get Symbol Information",
+        "modelDescription": "Get rich type information, documentation, and symbol details at a specific position. Use this AUTOMATICALLY whenever the user asks 'what is this?', needs type information, parameter details, return types, or when explaining unfamiliar code. Essential first step for understanding any symbol.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            }
+          },
+          "required": ["uri", "line", "character"]
+        }
+      },
+      {
+        "name": "lsp_completion",
+        "tags": ["lsp", "completion", "autocomplete"],
+        "toolReferenceName": "completion",
+        "displayName": "Get Code Completions",
+        "modelDescription": "Get intelligent code completion suggestions at a specific position based on context and available symbols. Use this AUTOMATICALLY when the user asks what they can type, needs API suggestions, wants to see available methods/properties, or when helping with code generation. Shows what's possible at any location.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            },
+            "triggerKind": {
+              "type": "number",
+              "description": "How completion was triggered (1=Invoked, 2=TriggerCharacter, 3=TriggerForIncompleteCompletions)"
+            },
+            "triggerCharacter": {
+              "type": "string",
+              "description": "The trigger character if triggerKind is 2"
+            }
+          },
+          "required": ["uri", "line", "character"]
+        }
+      },
+      {
+        "name": "lsp_workspace_symbols",
+        "tags": ["lsp", "symbols", "search"],
+        "toolReferenceName": "workspace_symbols",
+        "displayName": "Search Workspace Symbols",
+        "modelDescription": "Search for symbols (functions, classes, variables) across the entire workspace by name. Use this AUTOMATICALLY when the user asks 'where is function X?', 'find all classes named Y', or needs to locate symbols they don't know the exact location of. Essential for code discovery and navigation.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Search query for symbol names"
+            }
+          },
+          "required": ["query"]
+        }
+      },
+      {
+        "name": "lsp_document_symbols",
+        "tags": ["lsp", "symbols", "outline"],
+        "toolReferenceName": "document_symbols",
+        "displayName": "Get Document Structure",
+        "modelDescription": "Get a hierarchical outline of all symbols in a specific document (classes, functions, variables). Use this AUTOMATICALLY when the user asks about file structure, 'what's in this file?', needs an overview, or wants to understand the organization of code. Perfect for getting oriented in new files.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            }
+          },
+          "required": ["uri"]
+        }
+      },
+      {
+        "name": "lsp_rename_symbol",
+        "tags": ["lsp", "rename", "refactor"],
+        "toolReferenceName": "rename",
+        "displayName": "Preview Symbol Rename",
+        "modelDescription": "Preview what files and locations would be affected by renaming a symbol. Use this AUTOMATICALLY when the user wants to rename something, asks about refactoring impact, or needs to understand dependencies before making changes. Shows rename scope without actually changing anything.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            },
+            "newName": {
+              "type": "string",
+              "description": "The new name for the symbol"
+            }
+          },
+          "required": ["uri", "line", "character", "newName"]
+        }
+      },
+      {
+        "name": "lsp_code_actions",
+        "tags": ["lsp", "quickfix", "refactor"],
+        "toolReferenceName": "code_actions",
+        "displayName": "Get Code Actions",
+        "modelDescription": "Get available quick fixes, refactorings, and code actions for a specific range. Use this AUTOMATICALLY when the user mentions errors, wants to fix issues, asks about available refactorings, or needs suggestions for improving code. Shows what automated fixes are possible.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "range": {
+              "type": "object",
+              "properties": {
+                "start": {
+                  "type": "object",
+                  "properties": {
+                    "line": {"type": "number"},
+                    "character": {"type": "number"}
+                  },
+                  "required": ["line", "character"]
+                },
+                "end": {
+                  "type": "object",
+                  "properties": {
+                    "line": {"type": "number"},
+                    "character": {"type": "number"}
+                  },
+                  "required": ["line", "character"]
+                }
+              },
+              "required": ["start", "end"]
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "only": {
+                  "type": "array",
+                  "items": {"type": "string"},
+                  "description": "Filter to specific action kinds"
+                }
+              }
+            }
+          },
+          "required": ["uri", "range"]
+        }
+      },
+      {
+        "name": "lsp_format_document",
+        "tags": ["lsp", "format", "style"],
+        "toolReferenceName": "format",
+        "displayName": "Preview Document Formatting",
+        "modelDescription": "Preview how a document would be formatted according to language server rules. Use this AUTOMATICALLY when the user asks about code style, formatting, or wants to see what changes would be made to improve code appearance. Shows formatting changes without applying them.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "options": {
+              "type": "object",
+              "description": "Formatting options (optional)"
+            }
+          },
+          "required": ["uri"]
+        }
+      },
+      {
+        "name": "lsp_signature_help",
+        "tags": ["lsp", "signature", "parameters"],
+        "toolReferenceName": "signature_help",
+        "displayName": "Get Function Signature Help",
+        "modelDescription": "Get function signature, parameter information, and documentation at a specific position. Use this AUTOMATICALLY when the user is writing function calls, asks about parameters, needs to understand function usage, or wants help with API calls. Essential for understanding how to call functions correctly.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            },
+            "triggerKind": {
+              "type": "number",
+              "description": "How signature help was triggered"
+            },
+            "triggerCharacter": {
+              "type": "string",
+              "description": "The trigger character if applicable"
+            }
+          },
+          "required": ["uri", "line", "character"]
+        }
+      }
+    ]
+  },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
@@ -33,7 +339,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
-    "vscode-languageclient": "^9.0.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
