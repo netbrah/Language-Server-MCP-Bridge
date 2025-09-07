@@ -45,38 +45,91 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
+			// Add small delay to ensure language server is ready
+			await new Promise(resolve => setTimeout(resolve, 100));
+			
 			const document = await this.getDocument(uri);
 			const vscodePosition = new vscode.Position(position.line, position.character);
 
-			// Use VSCode's definition provider
-			const definitions = await vscode.commands.executeCommand<vscode.LocationLink[]>(
-				'vscode.executeDefinitionProvider',
-				document.uri,
-				vscodePosition
-			);
+			// Validate position is within document bounds
+			if (position.line >= document.lineCount) {
+				console.warn(`Position line ${position.line} exceeds document line count ${document.lineCount}`);
+				return [];
+			}
 
-			if (!definitions) {
+			const line = document.lineAt(position.line);
+			if (position.character > line.text.length) {
+				console.warn(`Position character ${position.character} exceeds line length ${line.text.length}`);
+				return [];
+			}
+
+			// Use VSCode's definition provider with timeout
+			const definitions = await Promise.race([
+				vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
+					'vscode.executeDefinitionProvider',
+					document.uri,
+					vscodePosition
+				),
+				new Promise<undefined>((_, reject) => 
+					setTimeout(() => reject(new Error('Definition request timeout')), 5000)
+				)
+			]);
+
+			if (!definitions || definitions.length === 0) {
+				console.log('No definitions found for position', position);
 				return [];
 			}
 
 			// Convert VSCode locations to our format
 			return definitions.map(def => {
-				const targetUri = def.targetUri.toString();
-				const range = def.targetRange || def.targetSelectionRange;
-				
-				return {
-					uri: targetUri,
-					range: {
-						start: {
-							line: range.start.line,
-							character: range.start.character
-						},
-						end: {
-							line: range.end.line,
-							character: range.end.character
-						}
+				// Handle both Location and LocationLink types
+				if ('targetUri' in def) {
+					// LocationLink
+					const targetUri = def.targetUri.toString();
+					const range = def.targetRange || def.targetSelectionRange;
+					
+					// Handle case where range might be undefined
+					if (!range) {
+						console.warn('LocationLink found but no range available:', def);
+						return {
+							uri: targetUri,
+							range: {
+								start: { line: 0, character: 0 },
+								end: { line: 0, character: 0 }
+							}
+						};
 					}
-				};
+					
+					return {
+						uri: targetUri,
+						range: {
+							start: {
+								line: range.start.line,
+								character: range.start.character
+							},
+							end: {
+								line: range.end.line,
+								character: range.end.character
+							}
+						}
+					};
+				} else {
+					// Location
+					const location = def as vscode.Location;
+					return {
+						uri: location.uri.toString(),
+						range: {
+							start: {
+								line: location.range.start.line,
+								character: location.range.start.character
+							},
+							end: {
+								line: location.range.end.line,
+								character: location.range.end.character
+							}
+						}
+					};
+				}
 			});
 		} catch (error) {
 			console.error('Error getting definitions:', error);

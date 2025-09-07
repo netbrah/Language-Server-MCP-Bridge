@@ -107,8 +107,23 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                 const response = `Found ${locations.length} definition(s):\n\n` +
                     locations.map((loc, index) => {
                         const uri = vscode.Uri.parse(loc.uri);
-                        const fileName = uri.fsPath.split('/').pop() || uri.fsPath;
-                        return `${index + 1}. ${fileName}:${loc.range.start.line + 1}:${loc.range.start.character + 1}`;
+                        
+                        // Try to get workspace-relative path, fall back to better path representation
+                        let displayPath: string;
+                        const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+                        if (workspaceFolder) {
+                            displayPath = vscode.workspace.asRelativePath(uri);
+                        } else {
+                            // Show last 2-3 path segments for better context
+                            const pathParts = uri.fsPath.split('/');
+                            if (pathParts.length > 3) {
+                                displayPath = '...' + pathParts.slice(-3).join('/');
+                            } else {
+                                displayPath = uri.fsPath;
+                            }
+                        }
+                        
+                        return `${index + 1}. ${displayPath}:${loc.range.start.line + 1}:${loc.range.start.character + 1}`;
                     }).join('\n');
 
                 return new vscode.LanguageModelToolResult([
