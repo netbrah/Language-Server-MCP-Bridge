@@ -1,20 +1,20 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { ClangdClient, DefinitionInput, ReferencesInput, HoverInput, CompletionInput } from './types';
+import { LanguageClient, DefinitionInput, ReferencesInput, HoverInput, CompletionInput } from './types';
 
 /**
- * MCP Server that exposes clangd Language Server capabilities as tools
+ * MCP Server that exposes Language Server Protocol capabilities as tools
  */
-export class ClangdMCPServer {
+export class LSPMCPServer {
 	private mcpServer: McpServer;
-	private clangdClient: ClangdClient;
+	private languageClient: LanguageClient;
 
-	constructor(clangdClient: ClangdClient) {
-		this.clangdClient = clangdClient;
+	constructor(languageClient: LanguageClient) {
+		this.languageClient = languageClient;
 		
 		this.mcpServer = new McpServer({
-			name: 'clangd-mcp-server',
+			name: 'lsp-mcp-bridge',
 			version: '0.0.1',
 		});
 
@@ -32,14 +32,14 @@ export class ClangdMCPServer {
 	}
 
 	/**
-	 * Register the clangd.definition tool
+	 * Register the lsp.definition tool
 	 */
 	private registerDefinitionTool(): void {
 		this.mcpServer.registerTool(
-			'clangd.definition',
+			'lsp.definition',
 			{
 				title: 'Get Definition',
-				description: 'Get the definition location of a symbol at a specific position in a C/C++ file',
+				description: 'Get the definition location of a symbol at a specific position in a source file',
 				inputSchema: {
 					uri: z.string().describe('File URI (file:// scheme)'),
 					position: z.object({
@@ -51,18 +51,18 @@ export class ClangdMCPServer {
 			async (input) => {
 				const { uri, position } = input as DefinitionInput;
 
-				if (!this.clangdClient.isReady()) {
+				if (!this.languageClient.isReady()) {
 					return {
 						content: [{
 							type: 'text',
-							text: 'Error: Clangd language client is not ready'
+							text: 'Error: Language client is not ready'
 						}],
 						isError: true
 					};
 				}
 
 				try {
-					const locations = await this.clangdClient.getDefinition(uri, position);
+					const locations = await this.languageClient.getDefinition(uri, position);
 					
 					if (locations.length === 0) {
 						return {
@@ -98,14 +98,14 @@ export class ClangdMCPServer {
 	}
 
 	/**
-	 * Register the clangd.references tool
+	 * Register the lsp.references tool
 	 */
 	private registerReferencesTool(): void {
 		this.mcpServer.registerTool(
-			'clangd.references',
+			'lsp.references',
 			{
 				title: 'Get References',
-				description: 'Find all references to a symbol at a specific position in a C/C++ file',
+				description: 'Find all references to a symbol at a specific position in a source file',
 				inputSchema: {
 					uri: z.string().describe('File URI (file:// scheme)'),
 					position: z.object({
@@ -118,18 +118,18 @@ export class ClangdMCPServer {
 			async (input) => {
 				const { uri, position, includeDeclaration = true } = input as ReferencesInput;
 
-				if (!this.clangdClient.isReady()) {
+				if (!this.languageClient.isReady()) {
 					return {
 						content: [{
 							type: 'text',
-							text: 'Error: Clangd language client is not ready'
+							text: 'Error: Language client is not ready'
 						}],
 						isError: true
 					};
 				}
 
 				try {
-					const locations = await this.clangdClient.getReferences(uri, position, includeDeclaration);
+					const locations = await this.languageClient.getReferences(uri, position, includeDeclaration);
 					
 					if (locations.length === 0) {
 						return {
@@ -166,11 +166,11 @@ export class ClangdMCPServer {
 	}
 
 	/**
-	 * Register the clangd.hover tool
+	 * Register the lsp.hover tool
 	 */
 	private registerHoverTool(): void {
 		this.mcpServer.registerTool(
-			'clangd.hover',
+			'lsp.hover',
 			{
 				title: 'Get Hover Info',
 				description: 'Get hover information (type, documentation) for a symbol at a specific position',
@@ -185,18 +185,18 @@ export class ClangdMCPServer {
 			async (input) => {
 				const { uri, position } = input as HoverInput;
 
-				if (!this.clangdClient.isReady()) {
+				if (!this.languageClient.isReady()) {
 					return {
 						content: [{
 							type: 'text',
-							text: 'Error: Clangd language client is not ready'
+							text: 'Error: Language client is not ready'
 						}],
 						isError: true
 					};
 				}
 
 				try {
-					const hover = await this.clangdClient.getHover(uri, position);
+					const hover = await this.languageClient.getHover(uri, position);
 					
 					if (!hover) {
 						return {
@@ -234,14 +234,14 @@ export class ClangdMCPServer {
 	}
 
 	/**
-	 * Register the clangd.completion tool
+	 * Register the lsp.completion tool
 	 */
 	private registerCompletionTool(): void {
 		this.mcpServer.registerTool(
-			'clangd.completion',
+			'lsp.completion',
 			{
 				title: 'Get Completions',
-				description: 'Get code completion suggestions at a specific position in a C/C++ file',
+				description: 'Get code completion suggestions at a specific position in a source file',
 				inputSchema: {
 					uri: z.string().describe('File URI (file:// scheme)'),
 					position: z.object({
@@ -255,18 +255,18 @@ export class ClangdMCPServer {
 			async (input) => {
 				const { uri, position, triggerKind = 1, triggerCharacter } = input as CompletionInput;
 
-				if (!this.clangdClient.isReady()) {
+				if (!this.languageClient.isReady()) {
 					return {
 						content: [{
 							type: 'text',
-							text: 'Error: Clangd language client is not ready'
+							text: 'Error: Language client is not ready'
 						}],
 						isError: true
 					};
 				}
 
 				try {
-					const completions = await this.clangdClient.getCompletion(uri, position, triggerKind, triggerCharacter);
+					const completions = await this.languageClient.getCompletion(uri, position, triggerKind, triggerCharacter);
 					
 					if (!completions.items || completions.items.length === 0) {
 						return {
