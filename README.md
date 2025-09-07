@@ -4,6 +4,52 @@ A Visual Studio Code extension that exposes **any Language Server Protocol (LSP)
 
 I created this because I work on an incredibly large C++ project (with `clangd`) and Copilot is not able find objects efficiently.
 
+<div align="center">
+
+[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/sehejjain.lsp-mcp-bridge?style=for-the-badge&logo=visual-studio-code&logoColor=white&label=VS%20Code%20Marketplace&color=007ACC)](https://marketplace.visualstudio.com/items?itemName=sehejjain.lsp-mcp-bridge)
+[![GitHub Source](https://img.shields.io/badge/GitHub-Source%20Code-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sehejjain/Language-Server-MCP-Bridge)
+
+**[📥 Install from VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=sehejjain.lsp-mcp-bridge)**
+
+*Or install directly in VS Code: Press `Ctrl+Shift+X`, search for "LSP MCP Bridge", and click Install*
+
+</div>
+
+## ✨ Demo
+
+Here's a quick example of how the extension enhances GitHub Copilot's understanding of a C++ codebase.
+<div align="center">
+
+### 1. A sample C++ project:
+<img src="images/cpp_code.png" alt="C++ sample code" width="600"/>
+
+*A small excerpt of the C++ project used in the demo.*
+
+---
+
+<table>
+<tr>
+<td width="50%" align="center">
+
+### 2. Copilot's enhanced answer:
+<img src="images/copilot_output.png" alt="Copilot output with LSP info" width="400"/>
+
+*Copilot's response enriched with precise definitions, references, and hover info provided by the LSP-MCP bridge.*
+
+</td>
+<td width="50%" align="center">
+
+### 3. Asking Copilot about the code:
+<img src="images/copilot_thinking.png" alt="Copilot thinking" width="400"/>
+
+*Copilot queries the registered LSP tools (workspace/document symbols, references) to find the symbol and its implementation.*
+
+</td>
+</tr>
+</table>
+
+</div>
+
 ## 🎯 Purpose
 
 This extension bridges the gap between any existing language server's capabilities and MCP clients + GitHub Copilot, enabling AI models and tools to:
@@ -47,13 +93,32 @@ Works with **any programming language** that has an active language server in VS
 
 ## 📦 Installation
 
+### 🎯 Recommended: From VS Code Marketplace
+
+**Method 1: Direct Link**
+1. Click here: **[Install LSP MCP Bridge](https://marketplace.visualstudio.com/items?itemName=sehejjain.lsp-mcp-bridge)**
+2. Click "Install" on the marketplace page
+3. VS Code will open and install the extension automatically
+
+**Method 2: In VS Code**
+1. Open VS Code
+2. Press `Ctrl+Shift+X` (or `Cmd+Shift+X` on Mac) to open Extensions
+3. Search for "LSP MCP Bridge" or "sehejjain.lsp-mcp-bridge"
+4. Click "Install"
+
+**Method 3: Command Line**
+```bash
+code --install-extension sehejjain.lsp-mcp-bridge
+```
+
 ### Prerequisites
 
-- Visual Studio Code 1.103.0 or later
-- Node.js 18.x or later
-- Any language server configured in your VSCode environment
+- Visual Studio Code 1.75.0 or later
+- Any language server configured in your VSCode environment (automatically works with existing setups)
 
-### From VSIX Package
+### Alternative: From VSIX Package
+
+For development or testing purposes:
 
 1. Download the latest `lsp-mcp-bridge-0.0.1.vsix` release
 2. Install the extension:
