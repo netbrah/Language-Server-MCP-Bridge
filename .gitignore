@@ -45,3 +45,4 @@ coverage/
 # Test project artifacts (for testing the extension)
 test-project/build/
 test-project/compile_commands.json
+.github/instructions/*

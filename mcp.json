@@ -1,8 +1,8 @@
 {
   "mcpVersion": "2024-11-05",
-  "name": "clangd-mcp-server",
+  "name": "lsp-mcp-bridge",
   "version": "0.0.1",
-  "description": "MCP server that exposes clangd Language Server capabilities as tools",
+  "description": "MCP server that exposes Language Server Protocol capabilities as tools",
   "author": "VSCode Extension",
   "license": "MIT",
   "capabilities": {
@@ -10,8 +10,8 @@
   },
   "tools": [
     {
-      "name": "clangd.definition",
-      "description": "Get the definition location of a symbol at a specific position in a C/C++ file",
+      "name": "lsp.definition",
+      "description": "Get the definition location of a symbol at a specific position in a source file",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -38,8 +38,8 @@
       }
     },
     {
-      "name": "clangd.references",
-      "description": "Find all references to a symbol at a specific position in a C/C++ file",
+      "name": "lsp.references",
+      "description": "Find all references to a symbol at a specific position in a source file",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -71,8 +71,8 @@
       }
     },
     {
-      "name": "clangd.hover",
-      "description": "Get hover information (type, documentation) for a symbol at a specific position",
+      "name": "lsp.hover",
+      "description": "Get hover information (type, documentation) for a symbol at a specific position in a source file",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -99,8 +99,8 @@
       }
     },
     {
-      "name": "clangd.completion",
-      "description": "Get code completion suggestions at a specific position in a C/C++ file",
+      "name": "lsp.completion",
+      "description": "Get code completion suggestions at a specific position in a source file",
       "inputSchema": {
         "type": "object",
         "properties": {

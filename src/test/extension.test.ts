@@ -1,18 +1,24 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { VSCodeClangdClient } from '../clangdClient';
-import { ClangdMCPServer } from '../mcpServer';
+import { VSCodeLanguageClient } from '../languageClient';
+import { LSPMCPServer } from '../mcpServer';
 import { 
     DefinitionInput, 
     ReferencesInput, 
     HoverInput, 
     CompletionInput,
-    ClangdClient,
+    LanguageClient,
     LSPPosition,
-    LSPLocation
+    LSPLocation,
+    LSPSymbolInformation,
+    LSPDocumentSymbol,
+    LSPWorkspaceEdit,
+    LSPCodeAction,
+    LSPTextEdit,
+    LSPSignatureHelp
 } from '../types';
 
-class MockClangdClient implements ClangdClient {
+class MockLanguageClient implements LanguageClient {
     async getDefinition(uri: string, position: LSPPosition): Promise<LSPLocation[]> {
         return [];
     }
@@ -29,6 +35,30 @@ class MockClangdClient implements ClangdClient {
         return { isIncomplete: false, items: [] };
     }
 
+    async getWorkspaceSymbols(query: string): Promise<LSPSymbolInformation[]> {
+        return [];
+    }
+
+    async getDocumentSymbols(uri: string): Promise<LSPDocumentSymbol[]> {
+        return [];
+    }
+
+    async renameSymbol(uri: string, position: LSPPosition, newName: string): Promise<LSPWorkspaceEdit | null> {
+        return null;
+    }
+
+    async getCodeActions(uri: string, range: any, context?: any): Promise<LSPCodeAction[]> {
+        return [];
+    }
+
+    async formatDocument(uri: string, options?: any): Promise<LSPTextEdit[]> {
+        return [];
+    }
+
+    async getSignatureHelp(uri: string, position: LSPPosition, triggerKind?: number, triggerCharacter?: string): Promise<LSPSignatureHelp | null> {
+        return null;
+    }
+
     isReady(): boolean {
         return true;
     }
@@ -37,13 +67,13 @@ class MockClangdClient implements ClangdClient {
 suite('Extension Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests.');
 
-    suite('ClangdMCPServer Tests', () => {
-        let mockClient: MockClangdClient;
-        let mcpServer: ClangdMCPServer;
+    suite('LSPMCPServer Tests', () => {
+        let mockClient: MockLanguageClient;
+        let mcpServer: LSPMCPServer;
 
         setup(() => {
-            mockClient = new MockClangdClient();
-            mcpServer = new ClangdMCPServer(mockClient);
+            mockClient = new MockLanguageClient();
+            mcpServer = new LSPMCPServer(mockClient);
         });
 
         test('should create MCP server instance', () => {
@@ -179,9 +209,9 @@ suite('Extension Test Suite', () => {
         });
     });
 
-    suite('VSCodeClangdClient Tests', () => {
-        test('should create VSCodeClangdClient instance', () => {
-            const client = new VSCodeClangdClient();
+    suite('VSCodeLanguageClient Tests', () => {
+        test('should create VSCodeLanguageClient instance', () => {
+            const client = new VSCodeLanguageClient();
             assert.ok(client);
         });
     });

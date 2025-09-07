@@ -1,49 +1,74 @@
-# Clangd MCP Server
+# LSP MCP Bridge
 
-A Visual Studio Code extension that exposes [clangd](https://clangd.llvm.org/) Language Server Protocol (LSP) capabilities as [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) tools. This extension allows MCP clients to access C/C++ code intelligence through clangd without spawning additional processes.
+A Visual Studio Code extension that exposes **any Language Server Protocol (LSP)** capabilities as [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) tools and **GitHub Copilot Language Model Tools**. This universal extension works with any programming language that has an active language server in VSCode.
+
+I created this because I work on an incredibly large C++ project (with `clangd`) and Copilot is not able find objects efficiently.
 
 ## 🎯 Purpose
 
-This extension bridges the gap between clangd's powerful C/C++ language server capabilities and MCP clients, enabling AI models and tools to:
+This extension bridges the gap between any existing language server's capabilities and MCP clients + GitHub Copilot, enabling AI models and tools to:
 
-- Navigate C/C++ codebases intelligently
-- Provide context-aware code suggestions
-- Answer questions about code structure and functionality
+- Navigate codebases intelligently across **any programming language**
+- Provide context-aware code suggestions and analysis
+- Answer questions about code structure and functionality  
 - Assist with code refactoring and analysis
+- **Automatically enhance GitHub Copilot** with deep language server insights
 
 ## 🚀 Features
 
-### MCP Tools Provided
+### Language Model Tools for GitHub Copilot (10 Tools)
 
-The extension exposes four core clangd capabilities as MCP tools:
+The extension exposes comprehensive LSP capabilities as GitHub Copilot tools that can be used **automatically**:
 
-1. **`clangd.definition`** - Find symbol definitions
-2. **`clangd.references`** - Find all references to a symbol
-3. **`clangd.hover`** - Get symbol information and documentation
-4. **`clangd.completion`** - Get code completion suggestions
+1. **`lsp_definition`** - Find symbol definitions
+2. **`lsp_references`** - Find all references to a symbol  
+3. **`lsp_hover`** - Get symbol information and documentation
+4. **`lsp_completion`** - Get code completion suggestions
+5. **`lsp_workspace_symbols`** - Search symbols across the workspace
+6. **`lsp_document_symbols`** - Get document structure/outline
+7. **`lsp_rename_symbol`** - Preview symbol rename impact
+8. **`lsp_code_actions`** - Get available quick fixes and refactorings
+9. **`lsp_format_document`** - Preview document formatting
+10. **`lsp_signature_help`** - Get function signature and parameter help
 
-### Key Benefits
+### Universal Language Support
 
-- **🔄 Process Reuse**: Leverages the existing clangd LanguageClient in VSCode (no new clangd process)
-- **⚡ High Performance**: Direct integration with VSCode's language services
-- **🛡️ Type Safety**: Full TypeScript implementation with comprehensive error handling
-- **🧪 Well Tested**: Complete test suite with mock implementations
-- **📋 Standards Compliant**: Follows MCP protocol specifications
+Works with **any programming language** that has an active language server in VSCode:
+- **Python** (Pylance, Jedi)
+- **TypeScript/JavaScript** (Built-in)
+- **Rust** (rust-analyzer)
+- **Go** (Go extension)
+- **C/C++** (C/C++ extension, clangd)
+- **Java** (Language Support for Java)
+- **C#** (.NET extension)
+- **PHP** (Intelephense)
+- **Ruby** (Solargraph)
+- **And many more...**
 
 ## 📦 Installation
 
 ### Prerequisites
 
-- Visual Studio Code 1.74.0 or later
+- Visual Studio Code 1.103.0 or later
 - Node.js 18.x or later
-- clangd installed and configured in your VSCode environment
+- Any language server configured in your VSCode environment
+
+### From VSIX Package
+
+1. Download the latest `lsp-mcp-bridge-0.0.1.vsix` release
+2. Install the extension:
+   ```bash
+   code --install-extension lsp-mcp-bridge-0.0.1.vsix
+   ```
+3. Reload VSCode
+4. The tools are automatically available to GitHub Copilot!
 
 ### From Source
 
 1. Clone this repository:
    ```bash
    git clone <repository-url>
-   cd clangd-mcp-server
+   cd lsp-mcp-bridge
    ```
 
 2. Install dependencies:
@@ -51,311 +76,181 @@ The extension exposes four core clangd capabilities as MCP tools:
    npm install
    ```
 
-3. Compile the extension:
+3. Compile and package:
    ```bash
    npm run compile
+   npx @vscode/vsce package
    ```
 
-4. Install the extension in VSCode:
+4. Install the extension:
    ```bash
-   # Package the extension
-   npx vsce package
-   
-   # Install the .vsix file in VSCode
-   code --install-extension clangd-mcp-server-*.vsix
+   code --install-extension lsp-mcp-bridge-0.0.1.vsix
    ```
 
-## 🛠️ Configuration
+## 🛠️ Usage
 
-### MCP Manifest
+### With GitHub Copilot (Automatic)
 
-The extension provides a `mcp.json` manifest that describes the available tools:
+Once installed, all LSP tools are **automatically available** to GitHub Copilot. Copilot will use them automatically when:
 
-```json
-{
-  "name": "clangd-mcp-server",
-  "version": "1.0.0",
-  "description": "Exposes clangd LSP capabilities as MCP tools",
-  "tools": [
-    {
-      "name": "clangd.definition",
-      "description": "Find symbol definitions using clangd",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "uri": { "type": "string", "description": "File URI" },
-          "position": {
-            "type": "object",
-            "properties": {
-              "line": { "type": "number", "description": "0-based line number" },
-              "character": { "type": "number", "description": "0-based character offset" }
-            }
-          }
-        }
-      }
-    }
-    // ... other tools
-  ]
-}
-```
+- You ask about code structure or symbols
+- You need to understand unfamiliar code
+- You want to find references or definitions
+- You're working on refactoring tasks
+- You ask for code suggestions or improvements
 
-### VSCode Settings
+**Example**: Just ask Copilot *"What does this function do?"* while your cursor is on a function, and it will automatically use the `hover` and `definition` tools to provide a comprehensive answer.
 
-Ensure clangd is properly configured in your VSCode settings:
+### Auto-Discovery by VS Code
 
-```json
-{
-  "clangd.path": "/path/to/clangd",
-  "clangd.arguments": ["--log=verbose", "--pretty"],
-  "clangd.fallbackFlags": ["-std=c++17"]
-}
-```
+The extension automatically registers itself with VS Code's MCP system, so:
 
-## 📚 Usage
+- **No manual startup required** - Tools are immediately available
+- **Automatic tool discovery** - VS Code finds the extension's capabilities automatically  
+- **Seamless integration** - Works with VS Code's built-in MCP support
 
-### Setting Up a C++ Project
+### Manual Testing
 
-1. Create a `compile_commands.json` file in your project root:
-   ```json
-   [
-     {
-       "directory": "/path/to/your/project",
-       "command": "clang++ -std=c++17 -o main main.cpp",
-       "file": "/path/to/your/project/main.cpp"
-     }
-   ]
-   ```
+Use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 
-2. Open the project in VSCode and ensure clangd activates
+1. **"LSP MCP: Test MCP Tools at Cursor"** - Test the core tools at your cursor position
+2. **"LSP MCP: List Language Model Tools"** - See all 10 registered tools
 
-3. The MCP server will automatically be available when the extension activates
+### With External MCP Clients
 
-### Using MCP Tools
+The extension also automatically registers with VS Code's MCP system, making it discoverable by external MCP clients without any additional configuration.
 
-#### Finding Definitions
+## 🔧 Configuration
 
-```typescript
-// MCP client request
-{
-  "method": "tools/call",
-  "params": {
-    "name": "clangd.definition",
-    "arguments": {
-      "uri": "file:///path/to/file.cpp",
-      "position": {
-        "line": 10,
-        "character": 5
-      }
-    }
-  }
-}
-```
+**No additional configuration required!** The extension automatically works with any language servers you have configured in VSCode.
 
-#### Finding References
+### Supported Language Servers
 
-```typescript
-{
-  "method": "tools/call", 
-  "params": {
-    "name": "clangd.references",
-    "arguments": {
-      "uri": "file:///path/to/file.cpp",
-      "position": {
-        "line": 10,
-        "character": 5
-      },
-      "includeDeclaration": true
-    }
-  }
-}
-```
+The extension works with any LSP-compliant language server installed in VSCode:
 
-#### Getting Hover Information
-
-```typescript
-{
-  "method": "tools/call",
-  "params": {
-    "name": "clangd.hover", 
-    "arguments": {
-      "uri": "file:///path/to/file.cpp",
-      "position": {
-        "line": 10,
-        "character": 5
-      }
-    }
-  }
-}
-```
-
-#### Getting Completions
-
-```typescript
-{
-  "method": "tools/call",
-  "params": {
-    "name": "clangd.completion",
-    "arguments": {
-      "uri": "file:///path/to/file.cpp", 
-      "position": {
-        "line": 10,
-        "character": 5
-      },
-      "triggerCharacter": "."
-    }
-  }
-}
-```
-
-## 🏗️ Architecture
-
-### Project Structure
-
-```
-src/
-├── extension.ts         # VSCode extension entry point
-├── mcpServer.ts        # Main MCP server implementation  
-├── clangdClient.ts     # VSCode LanguageClient wrapper
-├── types.ts            # TypeScript type definitions
-└── test/
-    └── extension.test.ts # Comprehensive test suite
-
-test-project/           # Example C++ project for testing
-├── main.cpp
-├── utils.h
-├── utils.cpp
-├── compile_commands.json
-└── Makefile
-
-mcp.json               # MCP manifest
-package.json           # Extension manifest
-tsconfig.json          # TypeScript configuration
-```
-
-### Core Components
-
-1. **ClangdMCPServer**: Main MCP server class that registers and handles tool calls
-2. **VSCodeClangdClient**: Adapter that wraps VSCode's LanguageClient for clangd
-3. **Type System**: Comprehensive TypeScript interfaces for LSP and MCP integration
-4. **Validation**: Zod schemas for runtime input validation and type safety
-
-### Data Flow
-
-```
-MCP Client Request → ClangdMCPServer → VSCodeClangdClient → clangd LSP → Response
-```
+| Language | Language Server | Extension |
+|----------|----------------|-----------|
+| C/C++ | C/C++ extension, clangd | C/C++ or clangd extension |
+| Python | Pylance, Jedi | Python extension |
+| TypeScript/JavaScript | Built-in TS Server | Built-in |
+| Rust | rust-analyzer | rust-analyzer extension |
+| Go | gopls | Go extension |
+| Java | Eclipse JDT | Language Support for Java |
+| C# | OmniSharp | C# Dev Kit |
+| PHP | Intelephense | PHP Intelephense |
+| Ruby | Solargraph | Ruby LSP |
 
 ## 🧪 Testing
 
-Run the complete test suite:
+Run the comprehensive test suite:
 
 ```bash
 npm test
 ```
 
-This will:
-1. Compile TypeScript code
-2. Run ESLint for code quality
-3. Execute all unit tests in VSCode test environment
+The test suite includes:
+- Unit tests for all LSP client methods
+- Mock implementations for testing
+- Integration tests for MCP server functionality
+- Type validation tests
+- GitHub Copilot tool registration tests
 
-### Test Coverage
+## 📚 API Reference
 
-- ✅ MCP server instantiation and tool registration
-- ✅ Mock clangd client implementations
-- ✅ Request/response handling for all four tools
-- ✅ Input validation and error handling
-- ✅ TypeScript interface compliance
-- ✅ Empty response scenarios
+### Language Model Tools
 
-## 📋 Development
+All tools are automatically registered with GitHub Copilot and can be referenced by their `toolReferenceName`:
 
-### Building
+| Tool | Reference Name | Description |
+|------|----------------|-------------|
+| `lsp_definition` | `#definition` | Find symbol definitions |
+| `lsp_references` | `#references` | Find symbol references |
+| `lsp_hover` | `#hover` | Get symbol information |
+| `lsp_completion` | `#completion` | Get completions |
+| `lsp_workspace_symbols` | `#workspace_symbols` | Search workspace symbols |
+| `lsp_document_symbols` | `#document_symbols` | Get document outline |
+| `lsp_rename_symbol` | `#rename` | Preview rename impact |
+| `lsp_code_actions` | `#code_actions` | Get quick fixes |
+| `lsp_format_document` | `#format` | Preview formatting |
+| `lsp_signature_help` | `#signature_help` | Get function signatures |
 
-```bash
-# Compile TypeScript
-npm run compile
+### Input Schemas
 
-# Watch mode for development
-npm run watch
+All tools use consistent input schemas based on LSP specifications:
 
-# Lint code
-npm run lint
+**Position-based tools** (definition, references, hover, completion, signature_help):
+```typescript
+{
+  uri: string;        // File URI (e.g., "file:///path/to/file.py")
+  line: number;       // 0-based line number
+  character: number;  // 0-based character offset
+}
 ```
 
-### Testing the Extension
+**Workspace symbol search**:
+```typescript
+{
+  query: string;      // Search query for symbol names
+}
+```
 
-1. Open the project in VSCode
-2. Press `F5` to launch Extension Development Host
-3. Open the test-project folder in the new window
-4. Use Command Palette: "Start MCP Server" to manually start the server
-5. The MCP server will be available for client connections
+**Document symbols**:
+```typescript
+{
+  uri: string;        // File URI
+}
+```
 
-### Adding New Tools
+**Code actions**:
+```typescript
+{
+  uri: string;
+  range: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
+}
+```
 
-1. Define the tool schema in `mcp.json`
-2. Add corresponding TypeScript interfaces in `types.ts`
-3. Implement the tool handler in `mcpServer.ts`
-4. Add comprehensive tests in `extension.test.ts`
+## 🔍 How It Works
+
+1. **Extension Activation**: Registers all 10 LSP tools with VSCode's Language Model API
+2. **GitHub Copilot Integration**: Tools are automatically available to Copilot via `toolReferenceName`
+3. **LSP Bridge**: Uses VSCode's `executeCommand` API to access any active language server
+4. **Universal Support**: Works with any LSP-compliant language server
+5. **No Extra Processes**: Reuses existing language server connections
+
+## 🐛 Troubleshooting
+
+### Tools Not Appearing in Copilot
+- Ensure VSCode is version 1.103.0 or later
+- Reload VSCode after installation
+- Check that the extension is enabled in Extensions view
+
+### No Results from Tools
+- Ensure you have a language server active for your file type
+- Check that the file is saved and language server is initialized
+- Verify cursor position is on a valid symbol
+
+### Language Server Not Working
+- Install the appropriate language extension for your programming language
+- Check VSCode's Output panel for language server logs
+- Ensure your project is properly configured (e.g., `package.json` for Node.js)
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
+2. Create a feature branch: `git checkout -b feature/new-capability`
 3. Make your changes and add tests
-4. Ensure all tests pass: `npm test`
-5. Commit your changes: `git commit -m 'feat: add amazing feature'`
-6. Push to the branch: `git push origin feature/amazing-feature`
-7. Open a Pull Request
-
-### Commit Convention
-
-This project follows [Conventional Commits](https://www.conventionalcommits.org/):
-
-- `feat:` new features
-- `fix:` bug fixes
-- `docs:` documentation changes
-- `test:` adding or updating tests
-- `refactor:` code refactoring
-- `chore:` maintenance tasks
+4. Run the test suite: `npm test`
+5. Submit a pull request
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
-- [clangd](https://clangd.llvm.org/) - The C++ language server
-- [Model Context Protocol](https://modelcontextprotocol.io/) - The protocol specification
-- [VSCode Language Client](https://github.com/microsoft/vscode-languageserver-node) - LSP client implementation
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Q: clangd not found or not responding**
-A: Ensure clangd is installed and the path is correctly set in VSCode settings. Check that `compile_commands.json` exists in your project.
-
-**Q: MCP server fails to start**
-A: Check the VSCode Developer Console (Help → Toggle Developer Tools) for error messages. Ensure all dependencies are installed.
-
-**Q: No completion results**
-A: Verify that the file is saved and clangd has finished indexing. Check that the cursor position is valid for the file content.
-
-**Q: Extension doesn't activate**
-A: Ensure you have C/C++ files in your workspace. The extension only activates for C/C++ language contexts.
-
-### Debug Mode
-
-Enable verbose logging by setting clangd arguments in VSCode settings:
-
-```json
-{
-  "clangd.arguments": ["--log=verbose", "--pretty"]
-}
-```
-
-View logs in: VSCode Output Panel → "Clang Language Server"
-
----
-
-For more help, please [open an issue](https://github.com/your-username/clangd-mcp-server/issues) on GitHub.
+- Built on top of VSCode's excellent Language Server Protocol support
+- Inspired by the Model Context Protocol specification
+- Designed to enhance GitHub Copilot's capabilities
