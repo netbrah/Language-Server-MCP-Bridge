@@ -1,5 +1,5 @@
 /**
- * Type definitions for clangd LSP integration
+ * Type definitions for Language Server Protocol (LSP) integration
  */
 
 /**
@@ -57,6 +57,92 @@ export interface LSPCompletionList {
 }
 
 /**
+ * LSP Symbol Information
+ */
+export interface LSPSymbolInformation {
+	name: string;
+	kind: number;
+	location: LSPLocation;
+	containerName?: string;
+}
+
+/**
+ * LSP Document Symbol
+ */
+export interface LSPDocumentSymbol {
+	name: string;
+	kind: number;
+	range: {
+		start: LSPPosition;
+		end: LSPPosition;
+	};
+	selectionRange: {
+		start: LSPPosition;
+		end: LSPPosition;
+	};
+	detail?: string;
+	children?: LSPDocumentSymbol[];
+}
+
+/**
+ * LSP Workspace Edit
+ */
+export interface LSPWorkspaceEdit {
+	changes?: { [uri: string]: LSPTextEdit[] };
+}
+
+/**
+ * LSP Text Edit
+ */
+export interface LSPTextEdit {
+	range: {
+		start: LSPPosition;
+		end: LSPPosition;
+	};
+	newText: string;
+}
+
+/**
+ * LSP Code Action
+ */
+export interface LSPCodeAction {
+	title: string;
+	kind?: string;
+	edit?: LSPWorkspaceEdit;
+	command?: {
+		title: string;
+		command: string;
+		arguments?: any[];
+	};
+}
+
+/**
+ * LSP Signature Help
+ */
+export interface LSPSignatureHelp {
+	signatures: LSPSignatureInformation[];
+	activeSignature?: number;
+	activeParameter?: number;
+}
+
+/**
+ * LSP Signature Information
+ */
+export interface LSPSignatureInformation {
+	label: string;
+	documentation?: string | { kind: string; value: string };
+	parameters?: LSPParameterInformation[];
+}
+
+/**
+ * LSP Parameter Information
+ */
+export interface LSPParameterInformation {
+	label: string | [number, number];
+	documentation?: string | { kind: string; value: string };
+}
+
+/**
  * MCP Position type for our tool inputs
  */
 export interface MCPPosition {
@@ -65,7 +151,7 @@ export interface MCPPosition {
 }
 
 /**
- * Input schema for clangd.definition tool
+ * Input schema for lsp.definition tool
  */
 export interface DefinitionInput {
 	uri: string;
@@ -73,7 +159,7 @@ export interface DefinitionInput {
 }
 
 /**
- * Input schema for clangd.references tool
+ * Input schema for lsp.references tool
  */
 export interface ReferencesInput {
 	uri: string;
@@ -82,7 +168,7 @@ export interface ReferencesInput {
 }
 
 /**
- * Input schema for clangd.hover tool
+ * Input schema for lsp.hover tool
  */
 export interface HoverInput {
 	uri: string;
@@ -90,7 +176,7 @@ export interface HoverInput {
 }
 
 /**
- * Input schema for clangd.completion tool
+ * Input schema for lsp.completion tool
  */
 export interface CompletionInput {
 	uri: string;
@@ -100,9 +186,72 @@ export interface CompletionInput {
 }
 
 /**
- * Clangd language client interface - abstracts VSCode's language client
+ * Input schema for lsp.workspaceSymbol tool
  */
-export interface ClangdClient {
+export interface WorkspaceSymbolInput {
+	query: string;
+}
+
+/**
+ * Input schema for lsp.documentSymbol tool
+ */
+export interface DocumentSymbolInput {
+	uri: string;
+}
+
+/**
+ * Input schema for lsp.rename tool
+ */
+export interface RenameInput {
+	uri: string;
+	position: MCPPosition;
+	newName: string;
+}
+
+/**
+ * Input schema for lsp.codeAction tool
+ */
+export interface CodeActionInput {
+	uri: string;
+	range: {
+		start: MCPPosition;
+		end: MCPPosition;
+	};
+	context?: {
+		diagnostics?: any[];
+		only?: string[];
+	};
+}
+
+/**
+ * Input schema for lsp.formatDocument tool
+ */
+export interface FormatDocumentInput {
+	uri: string;
+	options?: {
+		tabSize?: number;
+		insertSpaces?: boolean;
+		trimTrailingWhitespace?: boolean;
+		insertFinalNewline?: boolean;
+		trimFinalNewlines?: boolean;
+	};
+}
+
+/**
+ * Input schema for lsp.signatureHelp tool
+ */
+export interface SignatureHelpInput {
+	uri: string;
+	position: MCPPosition;
+	triggerKind?: number;
+	triggerCharacter?: string;
+	retrigger?: boolean;
+}
+
+/**
+ * Language Server client interface - abstracts VSCode's language client
+ */
+export interface LanguageClient {
 	/**
 	 * Request definition locations for a symbol
 	 */
@@ -122,6 +271,36 @@ export interface ClangdClient {
 	 * Request completion suggestions
 	 */
 	getCompletion(uri: string, position: LSPPosition, triggerKind?: number, triggerCharacter?: string): Promise<LSPCompletionList>;
+
+	/**
+	 * Search for symbols in the workspace
+	 */
+	getWorkspaceSymbols(query: string): Promise<LSPSymbolInformation[]>;
+
+	/**
+	 * Get symbols in a document
+	 */
+	getDocumentSymbols(uri: string): Promise<LSPDocumentSymbol[]>;
+
+	/**
+	 * Rename a symbol
+	 */
+	renameSymbol(uri: string, position: LSPPosition, newName: string): Promise<LSPWorkspaceEdit | null>;
+
+	/**
+	 * Get available code actions
+	 */
+	getCodeActions(uri: string, range: { start: LSPPosition; end: LSPPosition }, context?: any): Promise<LSPCodeAction[]>;
+
+	/**
+	 * Format a document
+	 */
+	formatDocument(uri: string, options?: any): Promise<LSPTextEdit[]>;
+
+	/**
+	 * Get signature help
+	 */
+	getSignatureHelp(uri: string, position: LSPPosition, triggerKind?: number, triggerCharacter?: string): Promise<LSPSignatureHelp | null>;
 
 	/**
 	 * Check if the language client is ready
