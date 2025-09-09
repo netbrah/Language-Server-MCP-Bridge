@@ -1,4 +1,4 @@
-# LSP MCP Bridge
+# Language Server tools for Copilot
 
 A Visual Studio Code extension that exposes **any Language Server Protocol (LSP)** capabilities as [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) tools and **GitHub Copilot Language Model Tools**. This universal extension works with any programming language that has an active language server in VSCode.
 

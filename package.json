@@ -1,8 +1,8 @@
 {
   "name": "lsp-mcp-bridge",
-  "displayName": "LSP MCP Bridge",
+  "displayName": "Language Server tools for Copilot",
   "description": "VSCode extension that exposes Language Server Protocol capabilities as MCP tools",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "publisher": "sehejjain",
   "license": "MIT",
   "repository": {
