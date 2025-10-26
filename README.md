@@ -1,6 +1,6 @@
 # Language Server tools for Copilot
 
-A Visual Studio Code extension that exposes **any Language Server Protocol (LSP)** capabilities as [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) tools and **GitHub Copilot Language Model Tools**. This universal extension works with any programming language that has an active language server in VSCode.
+A Visual Studio Code extension that exposes **any Language Server Protocol (LSP)** capabilities as **GitHub Copilot Language Model Tools**. This universal extension works with any programming language that has an active language server in VSCode.
 
 I created this because I work on an incredibly large C++ project (with `clangd`) and Copilot is not able find objects efficiently.
 
@@ -52,7 +52,7 @@ Here's a quick example of how the extension enhances GitHub Copilot's understand
 
 ## 🎯 Purpose
 
-This extension bridges the gap between any existing language server's capabilities and MCP clients + GitHub Copilot, enabling AI models and tools to:
+This extension bridges the gap between any existing language server's capabilities and GitHub Copilot, enabling AI models to:
 
 - Navigate codebases intelligently across **any programming language**
 - Provide context-aware code suggestions and analysis
@@ -166,24 +166,26 @@ Once installed, all LSP tools are **automatically available** to GitHub Copilot.
 
 **Example**: Just ask Copilot *"What does this function do?"* while your cursor is on a function, and it will automatically use the `hover` and `definition` tools to provide a comprehensive answer.
 
-### Auto-Discovery by VS Code
+### Auto-Discovery by GitHub Copilot
 
-The extension automatically registers itself with VS Code's MCP system, so:
+The extension automatically registers itself with VS Code's Language Model API, so:
 
-- **No manual startup required** - Tools are immediately available
-- **Automatic tool discovery** - VS Code finds the extension's capabilities automatically  
-- **Seamless integration** - Works with VS Code's built-in MCP support
+- **No manual startup required** - Tools are immediately available to Copilot
+- **Automatic tool discovery** - GitHub Copilot finds the extension's capabilities automatically  
+- **Seamless integration** - Works natively with VS Code's built-in Copilot support
 
 ### Manual Testing
 
 Use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 
-1. **"LSP MCP: Test MCP Tools at Cursor"** - Test the core tools at your cursor position
-2. **"LSP MCP: List Language Model Tools"** - See all 10 registered tools
+1. **"LSP LM Tools: Test Language Model Tools at Cursor"** - Test the core tools at your cursor position
+2. **"LSP LM Tools: List Language Model Tools"** - See all 10 registered tools
 
 ### With External MCP Clients
 
-The extension also automatically registers with VS Code's MCP system, making it discoverable by external MCP clients without any additional configuration.
+~~The extension also automatically registers with VS Code's MCP system, making it discoverable by external MCP clients without any additional configuration.~~
+
+**Note:** This extension now focuses exclusively on GitHub Copilot Language Model Tools integration for simpler architecture and better performance.
 
 ## 🔧 Configuration
 
@@ -216,9 +218,8 @@ npm test
 The test suite includes:
 - Unit tests for all LSP client methods
 - Mock implementations for testing
-- Integration tests for MCP server functionality
 - Type validation tests
-- GitHub Copilot tool registration tests
+- GitHub Copilot Language Model Tools registration tests
 
 ## 📚 API Reference
 
@@ -280,10 +281,21 @@ All tools use consistent input schemas based on LSP specifications:
 ## 🔍 How It Works
 
 1. **Extension Activation**: Registers all 10 LSP tools with VSCode's Language Model API
-2. **GitHub Copilot Integration**: Tools are automatically available to Copilot via `toolReferenceName`
+2. **GitHub Copilot Integration**: Tools are automatically available to Copilot via the Language Model API
 3. **LSP Bridge**: Uses VSCode's `executeCommand` API to access any active language server
 4. **Universal Support**: Works with any LSP-compliant language server
 5. **No Extra Processes**: Reuses existing language server connections
+
+## 🎉 Advantages of Language Model Tools over MCP Server
+
+This extension now uses **only** the Language Model Tools API (removing the MCP server implementation) for several advantages:
+
+1. **Simpler Architecture**: Single code path instead of maintaining parallel MCP and Language Model implementations
+2. **Native Integration**: Direct integration with GitHub Copilot through VS Code's official API
+3. **Better Performance**: No extra server process overhead - tools run directly in the extension
+4. **Reduced Dependencies**: Smaller bundle size without MCP SDK dependencies
+5. **Easier Maintenance**: Single implementation to test and maintain
+6. **Official Support**: Uses VS Code's official Language Model API designed specifically for Copilot integration
 
 ## 🐛 Troubleshooting
 
@@ -317,5 +329,4 @@ MIT License - see LICENSE file for details.
 ## 🙏 Acknowledgments
 
 - Built on top of VSCode's excellent Language Server Protocol support
-- Inspired by the Model Context Protocol specification
-- Designed to enhance GitHub Copilot's capabilities
+- Designed to enhance GitHub Copilot's capabilities through the Language Model API

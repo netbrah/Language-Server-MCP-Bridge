@@ -1,7 +1,6 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { VSCodeLanguageClient } from '../languageClient';
-import { LSPMCPServer } from '../mcpServer';
 import { 
     DefinitionInput, 
     ReferencesInput, 
@@ -67,17 +66,11 @@ class MockLanguageClient implements LanguageClient {
 suite('Extension Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests.');
 
-    suite('LSPMCPServer Tests', () => {
+    suite('LanguageClient Tests', () => {
         let mockClient: MockLanguageClient;
-        let mcpServer: LSPMCPServer;
 
         setup(() => {
             mockClient = new MockLanguageClient();
-            mcpServer = new LSPMCPServer(mockClient);
-        });
-
-        test('should create MCP server instance', () => {
-            assert.ok(mcpServer);
         });
 
         test('should handle definition requests with mock client', async () => {

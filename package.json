@@ -1,7 +1,7 @@
 {
   "name": "lsp-mcp-bridge",
   "displayName": "Language Server tools for Copilot",
-  "description": "VSCode extension that exposes Language Server Protocol capabilities as MCP tools",
+  "description": "VSCode extension that exposes Language Server Protocol capabilities as GitHub Copilot Language Model Tools",
   "version": "1.0.1",
   "publisher": "sehejjain",
   "license": "MIT",
@@ -20,11 +20,10 @@
   "keywords": [
     "lsp",
     "language-server",
-    "mcp",
-    "model-context-protocol",
     "copilot",
     "ai",
     "github-copilot",
+    "language-model-tools",
     "programming-languages",
     "developer-tools",
     "code-navigation",
@@ -58,22 +57,16 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "mcpServerDefinitionProviders": [
-      {
-        "id": "lsp-mcp-bridge",
-        "label": "LSP MCP Bridge Server"
-      }
-    ],
     "commands": [
       {
         "command": "lsp-mcp-bridge.testTools",
-        "title": "Test MCP Tools at Cursor",
-        "category": "LSP MCP"
+        "title": "Test Language Model Tools at Cursor",
+        "category": "LSP LM Tools"
       },
       {
         "command": "lsp-mcp-bridge.listLMTools",
         "title": "List Language Model Tools",
-        "category": "LSP MCP"
+        "category": "LSP LM Tools"
       }
     ],
     "languageModelTools": [
@@ -469,10 +462,7 @@
     "lint": "eslint src",
     "test": "vscode-test"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.5",
-    "zod": "^3.22.4"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
