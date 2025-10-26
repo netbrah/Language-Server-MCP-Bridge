@@ -17,6 +17,9 @@
   "engines": {
     "vscode": "^1.75.0"
   },
+  "enabledApiProposals": [
+    "languageModelToolsForAgent"
+  ],
   "keywords": [
     "lsp",
     "language-server",
@@ -74,7 +77,8 @@
         "name": "lsp_definition",
         "tags": [
           "lsp",
-          "definition"
+          "definition",
+          "vscode_editing"
         ],
         "toolReferenceName": "definition",
         "displayName": "Get Symbol Definition",
@@ -107,7 +111,8 @@
         "name": "lsp_references",
         "tags": [
           "lsp",
-          "references"
+          "references",
+          "vscode_editing"
         ],
         "toolReferenceName": "references",
         "displayName": "Get Symbol References",
@@ -145,7 +150,8 @@
         "tags": [
           "lsp",
           "hover",
-          "documentation"
+          "documentation",
+          "vscode_editing"
         ],
         "toolReferenceName": "hover",
         "displayName": "Get Symbol Information",
@@ -179,7 +185,8 @@
         "tags": [
           "lsp",
           "completion",
-          "autocomplete"
+          "autocomplete",
+          "vscode_editing"
         ],
         "toolReferenceName": "completion",
         "displayName": "Get Code Completions",
@@ -221,7 +228,8 @@
         "tags": [
           "lsp",
           "symbols",
-          "search"
+          "search",
+          "vscode_editing"
         ],
         "toolReferenceName": "workspace_symbols",
         "displayName": "Search Workspace Symbols",
@@ -245,7 +253,8 @@
         "tags": [
           "lsp",
           "symbols",
-          "outline"
+          "outline",
+          "vscode_editing"
         ],
         "toolReferenceName": "document_symbols",
         "displayName": "Get Document Structure",
@@ -269,7 +278,8 @@
         "tags": [
           "lsp",
           "rename",
-          "refactor"
+          "refactor",
+          "vscode_editing"
         ],
         "toolReferenceName": "rename",
         "displayName": "Preview Symbol Rename",
@@ -308,7 +318,8 @@
         "tags": [
           "lsp",
           "quickfix",
-          "refactor"
+          "refactor",
+          "vscode_editing"
         ],
         "toolReferenceName": "code_actions",
         "displayName": "Get Code Actions",
@@ -384,7 +395,8 @@
         "tags": [
           "lsp",
           "format",
-          "style"
+          "style",
+          "vscode_editing"
         ],
         "toolReferenceName": "format",
         "displayName": "Preview Document Formatting",
@@ -412,7 +424,8 @@
         "tags": [
           "lsp",
           "signature",
-          "parameters"
+          "parameters",
+          "vscode_editing"
         ],
         "toolReferenceName": "signature_help",
         "displayName": "Get Function Signature Help",
