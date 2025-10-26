@@ -174,7 +174,7 @@ This extension acts as a **bridge** between GitHub Copilot and any active Langua
 ```
 
 **Key Points:**
-1. **No server compilation required** - Uses existing language servers already running in VS Code
+1. **No additional language server setup required** - Uses existing language servers already running in VS Code
 2. **Language agnostic** - Works with any LSP-compliant language server
 3. **Zero configuration** - Automatically works with whatever language servers you have installed
 4. **Reuses existing connections** - No duplicate server processes
@@ -196,17 +196,28 @@ For C++ projects using clangd:
 
 ### Comparison with Direct MCP Servers
 
-Some projects implement direct MCP servers that:
-- **Bundle their own language server** (e.g., embed clangd binary)
-- **Require `compile_commands.json`** setup
-- **Start a separate server process** 
-- **Need language-specific configuration**
+Some projects implement direct MCP servers that bundle language server capabilities:
+- **Bundle their own language server** (e.g., embed clangd binary) - ensures consistency
+- **Require `compile_commands.json`** setup - provides more control
+- **Start a separate server process** - isolated from VS Code
+- **Need language-specific configuration** - allows fine-tuning
 
-**Our approach is different:**
-- ✅ No bundled binaries - uses whatever's installed
-- ✅ No `compile_commands.json` dependency - leverages VS Code's existing setup
-- ✅ No separate processes - reuses active language servers
-- ✅ Works with ANY language that has an LSP server
+**Our approach is different (trade-offs):**
+- ✅ No bundled binaries - uses whatever's installed (may vary by user)
+- ✅ No `compile_commands.json` dependency - leverages VS Code's existing setup (less control)
+- ✅ No separate processes - reuses active language servers (lighter weight)
+- ✅ Works with ANY language that has an LSP server (more versatile)
+
+**Choose direct MCP servers when:**
+- You need consistent behavior across all environments
+- You want fine-grained control over language server settings
+- You're building a standalone tool outside VS Code
+
+**Choose our approach when:**
+- You're already using VS Code with configured language servers
+- You want zero additional setup
+- You need multi-language support
+- You prefer lighter weight integration
 
 ### Why This Is Better
 
