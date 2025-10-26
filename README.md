@@ -285,6 +285,8 @@ All tools use consistent input schemas based on LSP specifications:
 4. **Universal Support**: Works with any LSP-compliant language server
 5. **No Extra Processes**: Reuses existing language server connections
 
+📖 **For a detailed explanation of the MCP architecture and integration, see [docs/MCP_ARCHITECTURE.md](docs/MCP_ARCHITECTURE.md)**
+
 ## 🐛 Troubleshooting
 
 ### Tools Not Appearing in Copilot
