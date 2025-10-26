@@ -150,16 +150,16 @@ The bridge uses VSCode's **Language Features API**, which provides standardized 
 
 | Command | Purpose | File |
 |---------|---------|------|
-| `vscode.executeDefinitionProvider` | Find symbol definitions | `languageClient.ts:68` |
-| `vscode.executeReferenceProvider` | Find symbol references | `languageClient.ts:150` |
-| `vscode.executeHoverProvider` | Get hover information | `languageClient.ts:204` |
-| `vscode.executeCompletionItemProvider` | Get code completions | `languageClient.ts:626` |
-| `vscode.executeWorkspaceSymbolProvider` | Search workspace symbols | `languageClient.ts:522` |
-| `vscode.executeDocumentSymbolProvider` | Get document outline | `languageClient.ts:568` |
-| `vscode.executeDocumentRenameProvider` | Preview symbol renames | `languageClient.ts:273` |
-| `vscode.executeCodeActionProvider` | Get quick fixes/refactorings | `languageClient.ts:330` |
-| `vscode.executeFormatDocumentProvider` | Format documents | `languageClient.ts:428` |
-| `vscode.executeSignatureHelpProvider` | Get function signatures | `languageClient.ts:476` |
+| `vscode.executeDefinitionProvider` | Find symbol definitions | `languageClient.ts` (line 69) |
+| `vscode.executeReferenceProvider` | Find symbol references | `languageClient.ts` (line 150) |
+| `vscode.executeHoverProvider` | Get hover information | `languageClient.ts` (line 204) |
+| `vscode.executeCompletionItemProvider` | Get code completions | `languageClient.ts` (line 626) |
+| `vscode.executeWorkspaceSymbolProvider` | Search workspace symbols | `languageClient.ts` (line 522) |
+| `vscode.executeDocumentSymbolProvider` | Get document outline | `languageClient.ts` (line 568) |
+| `vscode.executeDocumentRenameProvider` | Preview symbol renames | `languageClient.ts` (line 273) |
+| `vscode.executeCodeActionProvider` | Get quick fixes/refactorings | `languageClient.ts` (line 330) |
+| `vscode.executeFormatDocumentProvider` | Format documents | `languageClient.ts` (line 428) |
+| `vscode.executeSignatureHelpProvider` | Get function signatures | `languageClient.ts` (line 476) |
 
 ### Why Use VSCode Commands Instead of Direct LSP?
 
@@ -202,7 +202,7 @@ The **Language Model API** (`vscode.lm`) is VSCode's official API for:
 
 ### 10 Language Model Tools Registered
 
-The extension registers these tools (see `package.json:79-459` and `languageModelTools.ts`):
+The extension registers these tools (see `package.json` lines 79-459 for full definitions, and `languageModelTools.ts` lines 82-518 for implementations):
 
 1. **lsp_definition** - Find definitions (`#definition` reference)
 2. **lsp_references** - Find references (`#references` reference)
@@ -218,10 +218,10 @@ The extension registers these tools (see `package.json:79-459` and `languageMode
 ### Tool Registration Flow
 
 ```typescript
-// extension.ts:112
+// extension.ts line 112
 const lmToolsDisposables = registerLanguageModelTools(languageClient);
 
-// languageModelTools.ts:82-518
+// languageModelTools.ts lines 82-518
 export function registerLanguageModelTools(languageClient: VSCodeLanguageClient) {
     const disposables: vscode.Disposable[] = [];
     
