@@ -1,15 +1,19 @@
 name: CI
 
-# Run on pushes to main and PRs
+# Fast feedback workflow - runs on all PRs and main branch pushes
+# Optimized for fail-fast: lint -> build -> test in sequence
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: ['**']
 
 jobs:
-  test:
+  ci:
+    name: Lint, Build & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,12 +27,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Fail fast: Run lint first (fastest check)
       - name: Lint
         run: npm run lint
 
+      # Then build (catches compilation errors)
       - name: Build
         run: npm run package
 
+      # Finally run tests (slowest but most thorough)
       - name: Start virtual display
         run: |
           sudo apt-get update
