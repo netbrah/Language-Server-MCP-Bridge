@@ -1,6 +1,7 @@
 name: Build Development Artifact
 
 # Trigger on all pushes to any branch except main
+# Creates/updates a release and tag for each dev branch
 on:
   push:
     branches:
@@ -9,11 +10,15 @@ on:
 
 jobs:
   build-artifact:
-    name: Build Extension Artifact
+    name: Build & Release Dev Artifact
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for changelog
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -42,21 +47,97 @@ jobs:
           safe_name="${GITHUB_REF#refs/heads/}"
           safe_name="${safe_name//\//-}"
           echo "name=$safe_name" >> $GITHUB_OUTPUT
+          echo "original=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
 
       - name: Get short SHA
         id: sha
         run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Upload artifact
+      - name: Generate changelog for this branch
+        id: changelog
+        run: |
+          BRANCH="${{ steps.branch.outputs.original }}"
+          TAG_NAME="dev-${{ steps.branch.outputs.name }}"
+          
+          # Check if tag exists for this branch
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            # Get commits since last dev tag for this branch
+            CHANGELOG=$(git log ${TAG_NAME}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            echo "📝 Changes since last dev build:"
+          else
+            # First build for this branch - get all commits from main
+            if git rev-parse origin/main >/dev/null 2>&1; then
+              CHANGELOG=$(git log origin/main..HEAD --pretty=format:"- %s (%h)" --no-merges)
+              echo "📝 Changes in this branch (from main):"
+            else
+              # Fallback: just get recent commits
+              CHANGELOG=$(git log -10 --pretty=format:"- %s (%h)" --no-merges)
+              echo "📝 Recent changes:"
+            fi
+          fi
+          
+          # Handle empty changelog
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- No new changes since last build"
+          fi
+          
+          # Escape for GitHub Actions
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+          echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
+
+      - name: Delete old release and tag for this branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: dev-${{ steps.branch.outputs.name }}
+        run: |
+          # Delete the release if it exists
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release delete "$TAG_NAME" --yes
+            echo "Deleted old release: $TAG_NAME"
+          fi
+          
+          # Delete the tag if it exists
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            git push origin :refs/tags/"$TAG_NAME" 2>/dev/null || true
+            echo "Deleted old tag: $TAG_NAME"
+          fi
+
+      - name: Create/Update Release for this branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: dev-${{ steps.branch.outputs.name }}
+        run: |
+          gh release create "$TAG_NAME" \
+            --title "🚧 Dev Build: ${{ steps.branch.outputs.original }}" \
+            --notes "## Development Build
+          
+          **Branch:** \`${{ steps.branch.outputs.original }}\`  
+          **Commit:** \`${{ steps.sha.outputs.short }}\` - $(git log -1 --pretty=format:'%s')  
+          **Built:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          
+          ## Changes in this build
+          
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## Installation
+          
+          Download the \`lsp-mcp-bridge-dev.vsix\` file and install it in VS Code:
+          \`\`\`bash
+          code --install-extension lsp-mcp-bridge-dev.vsix
+          \`\`\`
+          
+          Or manually: Extensions → ⋯ (Views and More Actions) → Install from VSIX
+          
+          ---
+          ⚠️ **Note:** This is a development build and replaces the previous build for this branch." \
+            --prerelease \
+            lsp-mcp-bridge-dev.vsix
+
+      - name: Upload artifact to workflow
         uses: actions/upload-artifact@v4
         with:
           name: lsp-mcp-bridge-${{ steps.branch.outputs.name }}-${{ steps.sha.outputs.short }}
           path: lsp-mcp-bridge-dev.vsix
           retention-days: 30
-
-      - name: Comment on commit (if available)
-        if: github.event_name == 'push'
-        run: |
-          echo "✅ Extension artifact built successfully!"
-          echo "📦 Artifact name: lsp-mcp-bridge-${{ steps.branch.outputs.name }}-${{ steps.sha.outputs.short }}"
-          echo "🔗 Download from the Actions tab in this workflow run"

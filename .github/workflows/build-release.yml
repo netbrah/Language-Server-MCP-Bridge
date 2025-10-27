@@ -1,6 +1,7 @@
-name: Build and Release
+name: Build Main Branch
 
 # Trigger on pushes to main branch
+# Creates versioned releases for main branch builds
 on:
   push:
     branches:
@@ -8,7 +9,7 @@ on:
 
 jobs:
   build-and-release:
-    name: Build and Release Extension
+    name: Build & Release Main
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -43,62 +44,71 @@ jobs:
         id: package-version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
-      - name: Get commit count since last tag
-        id: commit-count
-        run: |
-          # Get the latest tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LATEST_TAG" ]; then
-            # No tags exist, count all commits
-            COUNT=$(git rev-list --count HEAD)
-          else
-            # Count commits since the latest tag
-            COUNT=$(git rev-list --count ${LATEST_TAG}..HEAD)
-          fi
-          echo "count=$COUNT" >> $GITHUB_OUTPUT
-
       - name: Generate changelog
         id: changelog
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          # Get the latest version tag (not dev or build tags)
+          LATEST_TAG=$(git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*" 2>/dev/null || echo "")
+          
           if [ -z "$LATEST_TAG" ]; then
-            # No tags exist, get all commit messages
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+            # No version tags exist, get all commit messages
+            CHANGELOG=$(git log --pretty=format:"- %s (%h by %an)" --no-merges -20)
           else
-            # Get commits since the latest tag
-            CHANGELOG=$(git log ${LATEST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            # Get commits since the latest version tag
+            CHANGELOG=$(git log ${LATEST_TAG}..HEAD --pretty=format:"- %s (%h by %an)" --no-merges)
           fi
-          # Escape newlines for GitHub Actions output
+          
+          # Handle empty changelog
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- No changes since last release"
+          fi
+          
+          # Escape for GitHub Actions
           CHANGELOG="${CHANGELOG//'%'/'%25'}"
           CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
           CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
           echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
 
+      - name: Get commit count for build number
+        id: build-num
+        run: |
+          COUNT=$(git rev-list --count HEAD)
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: v${{ steps.package-version.outputs.version }}-build.${{ github.run_number }}
+          TAG_NAME: v${{ steps.package-version.outputs.version }}-build.${{ steps.build-num.outputs.count }}
         run: |
-          # Create the release with the VSIX file attached
           gh release create "$TAG_NAME" \
-            --title "Release $TAG_NAME" \
-            --notes "## Changes in this build
-
+            --title "Main Build $TAG_NAME" \
+            --notes "## 🚀 Main Branch Build
+          
+          **Version:** ${{ steps.package-version.outputs.version }}  
+          **Build:** #${{ steps.build-num.outputs.count }}  
+          **Commit:** $(git rev-parse --short HEAD) - $(git log -1 --pretty=format:'%s')  
+          **Built:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          
+          ## Changes in this build
+          
           ${{ steps.changelog.outputs.changelog }}
-
+          
           ## Installation
-
+          
           Download the \`lsp-mcp-bridge.vsix\` file and install it in VS Code:
-          \`\`\`
+          \`\`\`bash
           code --install-extension lsp-mcp-bridge.vsix
           \`\`\`
-
-          Or manually: Extensions → Views and More Actions (•••) → Install from VSIX" \
+          
+          Or manually: Extensions → ⋯ (Views and More Actions) → Install from VSIX
+          
+          ---
+          💡 **For marketplace releases:** Use the \"Publish to Marketplace\" workflow to create an official release." \
             lsp-mcp-bridge.vsix
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lsp-mcp-bridge-vsix
+          name: lsp-mcp-bridge-v${{ steps.package-version.outputs.version }}-build.${{ steps.build-num.outputs.count }}
           path: lsp-mcp-bridge.vsix
           retention-days: 90
