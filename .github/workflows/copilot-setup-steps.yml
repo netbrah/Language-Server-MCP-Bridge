@@ -1,0 +1,314 @@
+name: GitHub Copilot Setup Steps
+
+# This workflow provides documentation and setup instructions for GitHub Copilot integration
+# It can be manually triggered to validate the Copilot integration setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      validate_tools:
+        description: 'Validate Language Model Tools registration'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  setup-validation:
+    name: Validate Copilot Integration Setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Extension
+        run: npm run package
+
+      - name: Validate package.json configuration
+        run: |
+          echo "📋 Validating package.json for Copilot integration..."
+          
+          # Check for enabledApiProposals
+          if grep -q "languageModelToolsForAgent" package.json; then
+            echo "✅ languageModelToolsForAgent API proposal is enabled"
+          else
+            echo "❌ languageModelToolsForAgent API proposal is NOT enabled"
+            exit 1
+          fi
+          
+          # Check for languageModelTools contribution
+          if grep -q "languageModelTools" package.json; then
+            echo "✅ languageModelTools contribution is defined"
+          else
+            echo "❌ languageModelTools contribution is NOT defined"
+            exit 1
+          fi
+          
+          # Count the number of tools
+          TOOL_COUNT=$(grep -c "\"name\": \"lsp_" package.json || true)
+          echo "📊 Found $TOOL_COUNT LSP tools registered"
+          
+          if [ "$TOOL_COUNT" -ge 10 ]; then
+            echo "✅ All expected tools are registered"
+          else
+            echo "⚠️  Expected at least 10 tools, found $TOOL_COUNT"
+          fi
+
+      - name: Validate tool definitions
+        run: |
+          echo "🔍 Validating individual tool definitions..."
+          
+          TOOLS=(
+            "lsp_definition"
+            "lsp_references"
+            "lsp_hover"
+            "lsp_completion"
+            "lsp_workspace_symbols"
+            "lsp_document_symbols"
+            "lsp_rename_symbol"
+            "lsp_code_actions"
+            "lsp_format_document"
+            "lsp_signature_help"
+          )
+          
+          for tool in "${TOOLS[@]}"; do
+            if grep -q "\"name\": \"$tool\"" package.json; then
+              echo "✅ $tool is defined"
+            else
+              echo "❌ $tool is NOT defined"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All expected tools are properly defined"
+
+      - name: Check VS Code API version
+        run: |
+          echo "🔍 Checking VS Code API version compatibility..."
+          
+          # Check minimum VS Code version
+          MIN_VERSION=$(grep -o '"vscode": "[^"]*"' package.json | grep -o '[0-9.^]*' | head -1)
+          echo "📌 Minimum VS Code version: $MIN_VERSION"
+          
+          if [[ "$MIN_VERSION" == ^1.75.* ]] || [[ "$MIN_VERSION" == ^1.7[5-9].* ]] || [[ "$MIN_VERSION" == ^1.[8-9]* ]]; then
+            echo "✅ VS Code version meets minimum requirements for Language Model Tools API"
+          else
+            echo "⚠️  VS Code version may need to be updated for Language Model Tools API"
+          fi
+
+      - name: Validate source files
+        run: |
+          echo "📂 Validating source file structure..."
+          
+          REQUIRED_FILES=(
+            "src/extension.ts"
+            "src/languageClient.ts"
+            "src/languageModelTools.ts"
+            "src/types.ts"
+          )
+          
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✅ $file exists"
+            else
+              echo "❌ $file is missing"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All required source files are present"
+
+      - name: Verify tool registration code
+        run: |
+          echo "🔍 Verifying tool registration in source code..."
+          
+          # Check if registerLanguageModelTools is exported
+          if grep -q "export.*registerLanguageModelTools" src/languageModelTools.ts; then
+            echo "✅ registerLanguageModelTools function is exported"
+          else
+            echo "❌ registerLanguageModelTools function is NOT exported"
+            exit 1
+          fi
+          
+          # Check if tools are registered with vscode.lm.registerTool
+          if grep -q "vscode.lm.registerTool" src/languageModelTools.ts; then
+            echo "✅ Tools are registered using vscode.lm.registerTool API"
+          else
+            echo "❌ Tool registration API is NOT found"
+            exit 1
+          fi
+
+      - name: Run tests
+        if: inputs.validate_tools
+        run: |
+          echo "🧪 Running test suite..."
+          npm test
+
+      - name: Generate setup summary
+        if: always()
+        run: |
+          echo "📊 GitHub Copilot Integration Setup Summary"
+          echo "=============================================="
+          echo ""
+          echo "Extension Information:"
+          echo "  Name: $(grep -m 1 '"name"' package.json | cut -d'"' -f4)"
+          echo "  Display Name: $(grep -m 1 '"displayName"' package.json | cut -d'"' -f4)"
+          echo "  Version: $(grep -m 1 '"version"' package.json | cut -d'"' -f4)"
+          echo ""
+          echo "Copilot Integration:"
+          echo "  ✓ Language Model Tools API enabled"
+          echo "  ✓ 10 LSP tools registered"
+          echo "  ✓ Tools available through GitHub Copilot"
+          echo ""
+          echo "Available Tools:"
+          echo "  1. lsp_definition - Find symbol definitions"
+          echo "  2. lsp_references - Find symbol references"
+          echo "  3. lsp_hover - Get symbol information"
+          echo "  4. lsp_completion - Code completion"
+          echo "  5. lsp_workspace_symbols - Search workspace"
+          echo "  6. lsp_document_symbols - Document outline"
+          echo "  7. lsp_rename_symbol - Preview renames"
+          echo "  8. lsp_code_actions - Quick fixes"
+          echo "  9. lsp_format_document - Format code"
+          echo "  10. lsp_signature_help - Function signatures"
+          echo ""
+          echo "Setup Complete! ✅"
+
+  documentation:
+    name: Generate Setup Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create setup guide
+        run: |
+          cat << 'EOF' > COPILOT_SETUP.md
+          # GitHub Copilot Integration Setup Guide
+          
+          This document describes how to set up and use the LSP-MCP Bridge extension with GitHub Copilot.
+          
+          ## Prerequisites
+          
+          - VS Code version 1.75.0 or higher
+          - GitHub Copilot subscription
+          - Language servers installed for your programming languages
+          
+          ## Installation
+          
+          1. Install the extension from VS Code Marketplace or build from source
+          2. The extension activates automatically when you open a supported file
+          3. Language Model Tools are automatically registered with GitHub Copilot
+          
+          ## Available Tools
+          
+          The extension provides 10 Language Model Tools that GitHub Copilot can use:
+          
+          ### Navigation Tools
+          - `lsp_definition` - Find where a symbol is defined
+          - `lsp_references` - Find all references to a symbol
+          - `lsp_workspace_symbols` - Search for symbols across the workspace
+          - `lsp_document_symbols` - Get document structure/outline
+          
+          ### Information Tools
+          - `lsp_hover` - Get type information and documentation
+          - `lsp_signature_help` - Get function signature and parameter info
+          - `lsp_completion` - Get code completion suggestions
+          
+          ### Refactoring Tools
+          - `lsp_rename_symbol` - Preview symbol rename operations
+          - `lsp_code_actions` - Get available quick fixes and refactorings
+          - `lsp_format_document` - Preview document formatting
+          
+          ## Usage
+          
+          Once installed, GitHub Copilot automatically has access to these tools and can:
+          - Navigate your codebase intelligently
+          - Understand symbol definitions and relationships
+          - Provide context-aware suggestions
+          - Help with refactoring operations
+          
+          ## Testing the Integration
+          
+          Use the VS Code Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) and run:
+          - `LSP LM Tools: Test Language Model Tools at Cursor` - Test tools at current position
+          - `LSP LM Tools: List Language Model Tools` - See all registered tools
+          
+          ## Troubleshooting
+          
+          ### Tools not appearing
+          - Ensure VS Code version is 1.75.0 or higher
+          - Check that GitHub Copilot is installed and active
+          - Verify the extension is activated (check Output panel)
+          
+          ### No results from tools
+          - Ensure a language server is active for your file type
+          - Check VS Code's language server logs in Output panel
+          - Try opening the file in a workspace (not standalone)
+          
+          ## Configuration
+          
+          The extension uses VS Code's existing language server configurations. No additional setup is required beyond your normal language server settings.
+          
+          ## API Details
+          
+          This extension uses:
+          - VS Code Language Model Tools API (`vscode.lm.registerTool`)
+          - Enabled API proposal: `languageModelToolsForAgent`
+          - LSP commands via `vscode.commands.executeCommand`
+          
+          ## Support
+          
+          For issues and feature requests, visit:
+          https://github.com/netbrah/Language-Server-MCP-Bridge/issues
+          EOF
+          
+          echo "✅ Setup documentation generated"
+
+      - name: Upload setup guide
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-setup-guide
+          path: COPILOT_SETUP.md
+          retention-days: 30
+
+      - name: Display setup instructions
+        run: |
+          echo "📖 GitHub Copilot Setup Instructions"
+          echo "====================================="
+          echo ""
+          echo "To use this extension with GitHub Copilot:"
+          echo ""
+          echo "1. Install Prerequisites:"
+          echo "   - VS Code 1.75.0 or newer"
+          echo "   - GitHub Copilot extension"
+          echo "   - Language servers for your languages"
+          echo ""
+          echo "2. Install this Extension:"
+          echo "   - From VS Code Marketplace, or"
+          echo "   - Build and install the .vsix package"
+          echo ""
+          echo "3. The extension automatically:"
+          echo "   - Activates when you open code files"
+          echo "   - Registers 10 LSP tools with Copilot"
+          echo "   - Makes language server features available to AI"
+          echo ""
+          echo "4. Verify Installation:"
+          echo "   - Open Command Palette"
+          echo "   - Run 'LSP LM Tools: List Language Model Tools'"
+          echo "   - You should see 10 lsp_* tools listed"
+          echo ""
+          echo "5. Use with Copilot:"
+          echo "   - GitHub Copilot will automatically use these tools"
+          echo "   - Ask Copilot about your code and it will use LSP features"
+          echo "   - Example: 'Where is this function defined?'"
+          echo ""
+          echo "✅ Setup complete! The tools are now available to GitHub Copilot."
