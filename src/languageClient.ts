@@ -133,7 +133,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 			});
 		} catch (error) {
 			console.error('Error getting definitions:', error);
-			throw new Error(`Definition request failed: ${error}`);
+			return []; // Return empty array instead of throwing
 		}
 	}
 
@@ -184,7 +184,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 			return results;
 		} catch (error) {
 			console.error('Error getting references:', error);
-			throw new Error(`References request failed: ${error}`);
+			return []; // Return empty array instead of throwing
 		}
 	}
 
@@ -253,7 +253,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 			};
 		} catch (error) {
 			console.error('Error getting hover:', error);
-			throw new Error(`Hover request failed: ${error}`);
+			return null; // Return null instead of throwing
 		}
 	}
 
@@ -303,7 +303,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 			return { changes };
 		} catch (error) {
 			console.error('Error renaming symbol:', error);
-			throw new Error(`Rename request failed: ${error}`);
+			return null; // Return null instead of throwing
 		}
 	}
 
@@ -403,7 +403,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 			});
 		} catch (error) {
 			console.error('Error getting code actions:', error);
-			throw new Error(`Code actions request failed: ${error}`);
+			return []; // Return empty array instead of throwing
 		}
 	}
 
@@ -451,7 +451,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 			}));
 		} catch (error) {
 			console.error('Error formatting document:', error);
-			throw new Error(`Format document request failed: ${error}`);
+			return []; // Return empty array instead of throwing
 		}
 	}
 
@@ -505,7 +505,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 			};
 		} catch (error) {
 			console.error('Error getting signature help:', error);
-			throw new Error(`Signature help request failed: ${error}`);
+			return null; // Return null instead of throwing
 		}
 	}
 
@@ -549,7 +549,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 			}));
 		} catch (error) {
 			console.error('Error getting workspace symbols:', error);
-			throw new Error(`Workspace symbols request failed: ${error}`);
+			return []; // Return empty array instead of throwing
 		}
 	}
 
@@ -605,7 +605,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 			return symbols.map(convertSymbol);
 		} catch (error) {
 			console.error('Error getting document symbols:', error);
-			throw new Error(`Document symbols request failed: ${error}`);
+			return []; // Return empty array instead of throwing
 		}
 	}
 	public async getCompletion(
@@ -656,7 +656,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 			};
 		} catch (error) {
 			console.error('Error getting completions:', error);
-			throw new Error(`Completion request failed: ${error}`);
+			return { isIncomplete: false, items: [] }; // Return empty list instead of throwing
 		}
 	}
 
