@@ -1,7 +1,7 @@
 {
   "name": "lsp-mcp-bridge",
   "displayName": "Language Server tools for Copilot",
-  "description": "VSCode extension that exposes Language Server Protocol capabilities as MCP tools",
+  "description": "VSCode extension that exposes Language Server Protocol capabilities as GitHub Copilot Language Model Tools",
   "version": "1.0.1",
   "publisher": "sehejjain",
   "license": "MIT",
@@ -17,14 +17,16 @@
   "engines": {
     "vscode": "^1.75.0"
   },
+  "enabledApiProposals": [
+    "languageModelToolsForAgent"
+  ],
   "keywords": [
     "lsp",
     "language-server",
-    "mcp",
-    "model-context-protocol",
     "copilot",
     "ai",
     "github-copilot",
+    "language-model-tools",
     "programming-languages",
     "developer-tools",
     "code-navigation",
@@ -58,22 +60,16 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "mcpServerDefinitionProviders": [
-      {
-        "id": "lsp-mcp-bridge",
-        "label": "LSP MCP Bridge Server"
-      }
-    ],
     "commands": [
       {
         "command": "lsp-mcp-bridge.testTools",
-        "title": "Test MCP Tools at Cursor",
-        "category": "LSP MCP"
+        "title": "Test Language Model Tools at Cursor",
+        "category": "LSP LM Tools"
       },
       {
         "command": "lsp-mcp-bridge.listLMTools",
         "title": "List Language Model Tools",
-        "category": "LSP MCP"
+        "category": "LSP LM Tools"
       }
     ],
     "languageModelTools": [
@@ -81,7 +77,8 @@
         "name": "lsp_definition",
         "tags": [
           "lsp",
-          "definition"
+          "definition",
+          "vscode_editing"
         ],
         "toolReferenceName": "definition",
         "displayName": "Get Symbol Definition",
@@ -114,7 +111,8 @@
         "name": "lsp_references",
         "tags": [
           "lsp",
-          "references"
+          "references",
+          "vscode_editing"
         ],
         "toolReferenceName": "references",
         "displayName": "Get Symbol References",
@@ -152,7 +150,8 @@
         "tags": [
           "lsp",
           "hover",
-          "documentation"
+          "documentation",
+          "vscode_editing"
         ],
         "toolReferenceName": "hover",
         "displayName": "Get Symbol Information",
@@ -186,7 +185,8 @@
         "tags": [
           "lsp",
           "completion",
-          "autocomplete"
+          "autocomplete",
+          "vscode_editing"
         ],
         "toolReferenceName": "completion",
         "displayName": "Get Code Completions",
@@ -228,7 +228,8 @@
         "tags": [
           "lsp",
           "symbols",
-          "search"
+          "search",
+          "vscode_editing"
         ],
         "toolReferenceName": "workspace_symbols",
         "displayName": "Search Workspace Symbols",
@@ -252,7 +253,8 @@
         "tags": [
           "lsp",
           "symbols",
-          "outline"
+          "outline",
+          "vscode_editing"
         ],
         "toolReferenceName": "document_symbols",
         "displayName": "Get Document Structure",
@@ -276,7 +278,8 @@
         "tags": [
           "lsp",
           "rename",
-          "refactor"
+          "refactor",
+          "vscode_editing"
         ],
         "toolReferenceName": "rename",
         "displayName": "Preview Symbol Rename",
@@ -315,7 +318,8 @@
         "tags": [
           "lsp",
           "quickfix",
-          "refactor"
+          "refactor",
+          "vscode_editing"
         ],
         "toolReferenceName": "code_actions",
         "displayName": "Get Code Actions",
@@ -391,7 +395,8 @@
         "tags": [
           "lsp",
           "format",
-          "style"
+          "style",
+          "vscode_editing"
         ],
         "toolReferenceName": "format",
         "displayName": "Preview Document Formatting",
@@ -419,7 +424,8 @@
         "tags": [
           "lsp",
           "signature",
-          "parameters"
+          "parameters",
+          "vscode_editing"
         ],
         "toolReferenceName": "signature_help",
         "displayName": "Get Function Signature Help",
@@ -469,10 +475,7 @@
     "lint": "eslint src",
     "test": "vscode-test"
   },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.5",
-    "zod": "^3.22.4"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
