@@ -12,6 +12,8 @@ jobs:
   ci:
     name: Lint, Build & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
