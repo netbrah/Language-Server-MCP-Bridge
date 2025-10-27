@@ -285,17 +285,7 @@ All tools use consistent input schemas based on LSP specifications:
 4. **Universal Support**: Works with any LSP-compliant language server
 5. **No Extra Processes**: Reuses existing language server connections
 
-### 📖 Architecture Deep Dive
-
-For a comprehensive explanation of how this extension integrates with clangd, VSCode's built-in tools, and the Language Model API, see [ARCHITECTURE.md](ARCHITECTURE.md).
-
-**Topics covered:**
-- How the bridge integrates with the clangd VS Code extension
-- Built-in VS Code tools and commands used
-- Language Model API usage and tool registration
-- Comparison with other clangd MCP servers
-- The role of compile_commands.json
-- Why this approach is universal and zero-configuration
+📖 **For a detailed explanation of the MCP architecture and integration, see [docs/MCP_ARCHITECTURE.md](docs/MCP_ARCHITECTURE.md)**
 
 ## 🐛 Troubleshooting
 
