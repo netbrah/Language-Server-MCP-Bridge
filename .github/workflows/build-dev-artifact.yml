@@ -1,0 +1,59 @@
+name: Build Development Artifact
+
+# Trigger on all pushes to any branch except main
+on:
+  push:
+    branches:
+      - '**'
+      - '!main'
+
+jobs:
+  build-artifact:
+    name: Build Extension Artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build extension
+        run: npm run package
+
+      - name: Install vsce
+        run: npm install -g @vscode/vsce
+
+      - name: Package extension
+        run: vsce package --out lsp-mcp-bridge-dev.vsix
+
+      - name: Get branch name
+        id: branch
+        run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lsp-mcp-bridge-${{ steps.branch.outputs.name }}-${{ steps.sha.outputs.short }}
+          path: lsp-mcp-bridge-dev.vsix
+          retention-days: 30
+
+      - name: Comment on commit (if available)
+        if: github.event_name == 'push'
+        run: |
+          echo "✅ Extension artifact built successfully!"
+          echo "📦 Artifact name: lsp-mcp-bridge-${{ steps.branch.outputs.name }}-${{ steps.sha.outputs.short }}"
+          echo "🔗 Download from the Actions tab in this workflow run"
