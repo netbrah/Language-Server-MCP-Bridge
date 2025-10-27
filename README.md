@@ -286,16 +286,7 @@ All tools use consistent input schemas based on LSP specifications:
 4. **Universal Support**: Works with any LSP-compliant language server
 5. **No Extra Processes**: Reuses existing language server connections
 
-## 🎉 Advantages of Language Model Tools over MCP Server
-
-This extension now uses **only** the Language Model Tools API (removing the MCP server implementation) for several advantages:
-
-1. **Simpler Architecture**: Single code path instead of maintaining parallel MCP and Language Model implementations
-2. **Native Integration**: Direct integration with GitHub Copilot through VS Code's official API
-3. **Better Performance**: No extra server process overhead - tools run directly in the extension
-4. **Reduced Dependencies**: Smaller bundle size without MCP SDK dependencies
-5. **Easier Maintenance**: Single implementation to test and maintain
-6. **Official Support**: Uses VS Code's official Language Model API designed specifically for Copilot integration
+📖 **For a detailed explanation of the MCP architecture and integration, see [docs/MCP_ARCHITECTURE.md](docs/MCP_ARCHITECTURE.md)**
 
 ## 🐛 Troubleshooting
 

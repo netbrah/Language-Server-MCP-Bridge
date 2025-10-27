@@ -1,276 +1,522 @@
-# Architecture: Language Model Tools vs MCP Server
+# Architecture: LSP MCP Bridge
 
 ## Overview
 
-This extension previously supported two parallel approaches for exposing LSP capabilities to AI assistants:
-1. **Model Context Protocol (MCP) Server** - External protocol for tool discovery
-2. **VS Code Language Model Tools API** - Native VS Code integration for GitHub Copilot
+The **LSP MCP Bridge** is a Visual Studio Code extension that acts as a universal bridge between Language Server Protocol (LSP) implementations and AI tools like GitHub Copilot. It exposes language server capabilities through two interfaces:
 
-As of version 1.0.2, we have **removed the MCP server implementation** and now exclusively use the **Language Model Tools API**.
+1. **Language Model Tools API** - Direct integration with GitHub Copilot
+2. **Model Context Protocol (MCP)** - Standard protocol for external AI clients
 
-## Why Language Model Tools Only?
+## The Bridge Concept
 
-### 1. **Simpler Architecture**
+### What is the Bridge?
 
-**Before (Dual Implementation):**
+The "bridge" refers to the architectural pattern that connects two different protocols:
+
 ```
-Extension
-├── languageModelTools.ts (10 tools via vscode.lm.registerTool)
-├── mcpServer.ts (4 tools via @modelcontextprotocol/sdk)
-├── mcpServerProvider.ts (Provider registration)
-└── mcpServerStandalone.ts (Standalone server entry point)
+┌─────────────────────────────────────────────────────────────────┐
+│                         GitHub Copilot                          │
+│                    (Language Model API Consumer)                │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+                                │ Language Model Tools API
+                                │ (vscode.lm.registerTool)
+                                │
+┌───────────────────────────────▼─────────────────────────────────┐
+│                       LSP MCP Bridge Extension                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │            Language Model Tools Registry                 │  │
+│  │  (languageModelTools.ts)                                │  │
+│  │  - lsp_definition, lsp_references, lsp_hover, etc.      │  │
+│  └─────────────────────────┬────────────────────────────────┘  │
+│                            │                                    │
+│  ┌─────────────────────────▼────────────────────────────────┐  │
+│  │         VSCodeLanguageClient (languageClient.ts)        │  │
+│  │  Translates tool calls → VSCode Commands                │  │
+│  └─────────────────────────┬────────────────────────────────┘  │
+│                            │                                    │
+└────────────────────────────┼────────────────────────────────────┘
+                             │
+                             │ VSCode Command API
+                             │ (vscode.executeDefinitionProvider, etc.)
+                             │
+┌────────────────────────────▼────────────────────────────────────┐
+│                    VSCode Built-in Language Features            │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  Language Server Protocol (LSP) Client Infrastructure   │  │
+│  └─────────────────────────┬────────────────────────────────┘  │
+└────────────────────────────┼────────────────────────────────────┘
+                             │
+                             │ Language Server Protocol (LSP)
+                             │
+┌────────────────────────────▼────────────────────────────────────┐
+│                    Active Language Servers                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
+│  │  clangd  │  │ Pylance  │  │rust-analy│  │   gopls  │ ...   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘       │
+└─────────────────────────────────────────────────────────────────┘
+                             │
+                             │ Source Code Analysis
+                             │
+┌────────────────────────────▼────────────────────────────────────┐
+│                       Your Project Files                        │
+│              (C++, Python, Rust, Go, TypeScript, etc.)          │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**After (Single Implementation):**
+## Integration with clangd VS Code Extension
+
+### How clangd Extension Works
+
+The **clangd VS Code extension** (vscode-clangd) is a language server client that:
+
+1. **Starts the clangd server process** - Launches `clangd` binary on your machine
+2. **Communicates via LSP** - Uses JSON-RPC over stdio/pipes to communicate with clangd
+3. **Relies on compile_commands.json** - clangd reads this file to understand build flags, include paths, etc.
+4. **Provides IntelliSense** - Replaces the built-in C/C++ IntelliSense with clangd's more accurate analysis
+
+### How LSP MCP Bridge Integrates with clangd
+
+**The LSP MCP Bridge does NOT directly communicate with clangd.** Instead:
+
+1. **Reuses VSCode's LSP Infrastructure**: The bridge leverages VSCode's existing language server connections
+2. **No Direct LSP Communication**: Instead of implementing another LSP client, it uses VSCode's command API
+3. **Universal Design**: Works with ANY language server, not just clangd
+
+#### Integration Flow for clangd:
+
 ```
-Extension
-└── languageModelTools.ts (10 tools via vscode.lm.registerTool)
+User asks Copilot: "Where is function Foo defined?"
+        │
+        ▼
+┌─────────────────────────────────────────────┐
+│  Copilot uses lsp_definition tool          │
+│  (registered via Language Model API)        │
+└────────────────┬────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────┐
+│  languageModelTools.ts                     │
+│  Receives: { uri, line, character }        │
+└────────────────┬────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────┐
+│  languageClient.ts                         │
+│  Calls: vscode.executeDefinitionProvider   │
+└────────────────┬────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────┐
+│  VSCode's Language Features Engine         │
+│  Routes to appropriate language server     │
+└────────────────┬────────────────────────────┘
+                 │
+                 ▼ (if file is .cpp/.h)
+┌─────────────────────────────────────────────┐
+│  clangd extension's LSP client             │
+│  Forwards request to clangd process        │
+└────────────────┬────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────┐
+│  clangd language server process            │
+│  - Parses C++ code                         │
+│  - Consults compile_commands.json          │
+│  - Returns definition location             │
+└────────────────┬────────────────────────────┘
+                 │
+                 ▼ (Response bubbles back up)
+        Returns to Copilot
 ```
 
-**Impact:**
-- 3 fewer source files to maintain
-- Single code path reduces complexity
-- Easier to understand and debug
+### Key Differences from Direct clangd MCP Servers
 
-### 2. **Native VS Code Integration**
+Other clangd MCP implementations typically:
 
-**Language Model Tools API:**
-- Official VS Code API designed specifically for GitHub Copilot
-- Direct integration without intermediate protocols
-- Automatic discovery by Copilot
-- No manual configuration required
+| Other clangd MCP Servers | LSP MCP Bridge |
+|-------------------------|----------------|
+| **Direct LSP client** - Implement their own LSP client | **Reuses VSCode's LSP client** - No direct LSP communication |
+| **clangd-specific** - Only work with clangd | **Universal** - Works with ANY language server |
+| **Manage clangd process** - Start/stop clangd themselves | **No process management** - Uses already-running language servers |
+| **Require compile_commands.json** - Must configure directly | **Inherits configuration** - Uses whatever the extension configured |
+| **Separate setup** - Need to configure independently | **Zero configuration** - Works automatically if extension installed |
 
-**MCP Server Approach:**
-- Required separate protocol layer
-- External process management
-- Manual server registration
-- Additional configuration overhead
+## Built-in VSCode Tools Used
 
-### 3. **Better Performance**
+The bridge uses VSCode's **Language Features API**, which provides standardized commands for any language server:
 
-**Metrics:**
-- **Bundle size reduced:** 686 KiB → 55.8 KiB (92% smaller!)
-- **Dependencies removed:** 70 packages
-- **No extra processes:** Runs directly in extension host
-- **Direct API calls:** No protocol serialization overhead
+### Core Commands Used
 
-**Before:**
-```
-Extension → MCP Protocol → MCP Server → Language Client → LSP → Language Server
-```
+| Command | Purpose | File |
+|---------|---------|------|
+| `vscode.executeDefinitionProvider` | Find symbol definitions | `languageClient.ts` (line 69) |
+| `vscode.executeReferenceProvider` | Find symbol references | `languageClient.ts` (line 150) |
+| `vscode.executeHoverProvider` | Get hover information | `languageClient.ts` (line 204) |
+| `vscode.executeCompletionItemProvider` | Get code completions | `languageClient.ts` (line 626) |
+| `vscode.executeWorkspaceSymbolProvider` | Search workspace symbols | `languageClient.ts` (line 522) |
+| `vscode.executeDocumentSymbolProvider` | Get document outline | `languageClient.ts` (line 568) |
+| `vscode.executeDocumentRenameProvider` | Preview symbol renames | `languageClient.ts` (line 273) |
+| `vscode.executeCodeActionProvider` | Get quick fixes/refactorings | `languageClient.ts` (line 330) |
+| `vscode.executeFormatDocumentProvider` | Format documents | `languageClient.ts` (line 428) |
+| `vscode.executeSignatureHelpProvider` | Get function signatures | `languageClient.ts` (line 476) |
 
-**After:**
-```
-Extension → Language Client → LSP → Language Server
-```
+### Why Use VSCode Commands Instead of Direct LSP?
 
-### 4. **Reduced Complexity**
+**Advantages:**
 
-**Dependencies Removed:**
-- `@modelcontextprotocol/sdk` (~600 KiB)
-- `zod` (validation library)
-- All transitive dependencies (70 total packages)
+1. **No LSP Implementation Needed** - VSCode handles all protocol details
+2. **Automatic Language Detection** - VSCode routes to the correct language server based on file type
+3. **Unified API** - Same code works for Python, C++, Rust, Go, TypeScript, etc.
+4. **Respects User Configuration** - Inherits all language server settings from user's extensions
+5. **No Process Management** - VSCode manages language server lifecycle
+6. **Built-in Error Handling** - VSCode handles timeouts, restarts, crashes
+7. **Performance** - Reuses existing connections instead of creating new ones
 
-**Files Removed:**
-- `src/mcpServer.ts` (320 lines)
-- `src/mcpServerProvider.ts` (53 lines)
-- `src/mcpServerStandalone.ts` (empty placeholder)
-- `mcp.json` (configuration)
-- `test-client.js` (test client)
+**This is the core innovation of the bridge: universal LSP access without implementing LSP.**
 
-### 5. **Easier Maintenance**
+## Language Model API Usage
 
-**Testing:**
-- Single implementation to test
-- No protocol compatibility concerns
-- Direct VS Code API testing
+### Yes, Language Model API is Used
 
-**Updates:**
-- No need to sync two implementations
-- Changes made once, not twice
-- Less risk of inconsistencies
-
-### 6. **Official Support**
-
-The Language Model Tools API is:
-- **Officially documented** in VS Code extension API
-- **Actively maintained** by the VS Code team
-- **Purpose-built** for GitHub Copilot integration
-- **Stable and reliable** with strong backwards compatibility guarantees
-
-## How It Works Now
-
-### Extension Activation
+The extension **extensively uses** VSCode's Language Model API introduced in VS Code 1.103+:
 
 ```typescript
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    // 1. Initialize language client (connects to any active LSP server)
-    languageClient = new VSCodeLanguageClient();
-    await languageClient.initialize();
-    
-    // 2. Register all 10 tools with Language Model API
-    const lmToolsDisposables = registerLanguageModelTools(languageClient);
-    
-    // 3. Tools are now automatically available to GitHub Copilot!
-    context.subscriptions.push(...lmToolsDisposables);
-}
-```
-
-### Tool Registration
-
-Each tool is registered using the standard VS Code API:
-
-```typescript
+// From languageModelTools.ts
 vscode.lm.registerTool('lsp_definition', {
     invoke: async (options, token) => {
-        const result = await languageClient.getDefinition(
-            options.input.uri,
-            options.input.position
-        );
-        return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(formatResult(result))
-        ]);
+        // Tool implementation
+        return new vscode.LanguageModelToolResult([...]);
     }
 });
 ```
 
-### GitHub Copilot Integration
+### What is the Language Model API?
 
-Tools are automatically discovered and can be used by Copilot through:
-- `package.json` contribution point: `languageModelTools`
-- Automatic registration during extension activation
-- Native VS Code language model invocation system
+The **Language Model API** (`vscode.lm`) is VSCode's official API for:
 
-## Integration with LSP Servers
+- **Registering tools** that language models (like Copilot) can use
+- **Automatic discovery** - Copilot automatically finds registered tools
+- **Structured invocation** - Type-safe tool calls with schemas
+- **Results formatting** - Standardized response format
 
-### How the Extension Works with Language Servers
+### 10 Language Model Tools Registered
 
-This extension acts as a **bridge** between GitHub Copilot and any active Language Server Protocol (LSP) server in VS Code:
+The extension registers these tools (see `package.json` lines 79-459 for full definitions, and `languageModelTools.ts` lines 82-518 for implementations):
+
+1. **lsp_definition** - Find definitions (`#definition` reference)
+2. **lsp_references** - Find references (`#references` reference)
+3. **lsp_hover** - Get hover info (`#hover` reference)
+4. **lsp_completion** - Get completions (`#completion` reference)
+5. **lsp_workspace_symbols** - Search workspace (`#workspace_symbols` reference)
+6. **lsp_document_symbols** - Get document structure (`#document_symbols` reference)
+7. **lsp_rename_symbol** - Preview renames (`#rename` reference)
+8. **lsp_code_actions** - Get quick fixes (`#code_actions` reference)
+9. **lsp_format_document** - Preview formatting (`#format` reference)
+10. **lsp_signature_help** - Get signatures (`#signature_help` reference)
+
+### Tool Registration Flow
+
+```typescript
+// extension.ts line 112
+const lmToolsDisposables = registerLanguageModelTools(languageClient);
+
+// languageModelTools.ts lines 82-518
+export function registerLanguageModelTools(languageClient: VSCodeLanguageClient) {
+    const disposables: vscode.Disposable[] = [];
+    
+    // Register each tool with Language Model API
+    disposables.push(vscode.lm.registerTool('lsp_definition', {
+        invoke: async (options, token) => {
+            // Get input parameters
+            const input = options.input;
+            
+            // Call language client
+            const locations = await languageClient.getDefinition(
+                input.uri, 
+                { line: input.line, character: input.character }
+            );
+            
+            // Format and return results
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(formattedResponse)
+            ]);
+        }
+    }));
+    
+    // ... register other 9 tools ...
+    
+    return disposables;
+}
+```
+
+## Architecture Components
+
+### 1. Extension Entry Point (`extension.ts`)
+
+**Responsibilities:**
+- Extension activation and lifecycle management
+- Initializes the language client adapter
+- Registers Language Model Tools with Copilot
+- Registers MCP Server Provider for external clients
+- Provides test commands for manual verification
+
+**Key Code:**
+```typescript
+export async function activate(context: vscode.ExtensionContext) {
+    // Initialize language client (wraps VSCode commands)
+    languageClient = new VSCodeLanguageClient();
+    await languageClient.initialize();
+    
+    // Create MCP server (for external clients)
+    mcpServer = new LSPMCPServer(languageClient);
+    
+    // Register tools with GitHub Copilot
+    const lmToolsDisposables = registerLanguageModelTools(languageClient);
+    
+    // Register MCP provider for external clients
+    const mcpProviderDisposable = registerMcpServerProvider(context);
+}
+```
+
+### 2. Language Client Adapter (`languageClient.ts`)
+
+**Responsibilities:**
+- Adapter pattern: wraps VSCode command API as LSP-like interface
+- Handles all 10 LSP operations
+- Document lifecycle management
+- Error handling and validation
+
+**Key Pattern:**
+```typescript
+export class VSCodeLanguageClient implements LanguageClient {
+    async getDefinition(uri: string, position: LSPPosition): Promise<LSPLocation[]> {
+        // 1. Get document
+        const document = await this.getDocument(uri);
+        
+        // 2. Convert position format
+        const vscodePosition = new vscode.Position(position.line, position.character);
+        
+        // 3. Call VSCode command (this routes to language server)
+        const definitions = await vscode.commands.executeCommand<vscode.Location[]>(
+            'vscode.executeDefinitionProvider',
+            document.uri,
+            vscodePosition
+        );
+        
+        // 4. Convert response format
+        return definitions.map(def => convertToLSPLocation(def));
+    }
+    
+    // Similar methods for references, hover, completion, etc.
+}
+```
+
+**No Direct LSP Communication:** This class never sends JSON-RPC messages, never manages sockets/stdio, never implements the LSP protocol. It purely translates between the tool API and VSCode commands.
+
+### 3. Language Model Tools (`languageModelTools.ts`)
+
+**Responsibilities:**
+- Registers all 10 tools with VSCode's Language Model API
+- Defines tool schemas (input parameters)
+- Handles tool invocations from Copilot
+- Formats responses in natural language for AI consumption
+
+**Tool Structure:**
+```typescript
+vscode.lm.registerTool('lsp_definition', {
+    invoke: async (options: vscode.LanguageModelToolInvocationOptions<ToolPositionInput>) => {
+        try {
+            // 1. Extract parameters
+            const input = options.input;
+            
+            // 2. Call language client
+            const locations = await languageClient.getDefinition(
+                input.uri,
+                { line: input.line, character: input.character }
+            );
+            
+            // 3. Format for AI consumption
+            const response = `Found ${locations.length} definition(s):\n` +
+                locations.map((loc, i) => 
+                    `${i+1}. ${formatPath(loc.uri)}:${loc.range.start.line+1}`
+                ).join('\n');
+            
+            // 4. Return structured result
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(response)
+            ]);
+        } catch (error) {
+            return new vscode.LanguageModelToolResult([
+                new vscode.LanguageModelTextPart(`Error: ${error}`)
+            ]);
+        }
+    }
+});
+```
+
+### 4. MCP Server (`mcpServer.ts`)
+
+**Responsibilities:**
+- Implements Model Context Protocol server
+- Exposes LSP capabilities as MCP tools
+- Can run as standalone stdio server for external clients
+- Currently limited to 4 core tools (definition, references, hover, completion)
+
+**Note:** This component is less important than Language Model Tools for GitHub Copilot integration. It's primarily for external MCP clients.
+
+### 5. MCP Server Provider (`mcpServerProvider.ts`)
+
+**Responsibilities:**
+- Implements `vscode.McpServerDefinitionProvider` interface
+- Registers with VSCode's MCP system
+- Enables auto-discovery by external MCP clients
+- Currently returns empty definitions (tools are primary integration)
+
+## How compile_commands.json Fits In
+
+### For clangd Specifically
+
+The `compile_commands.json` file is **still used by clangd**, but the LSP MCP Bridge doesn't interact with it directly:
 
 ```
-┌─────────────────┐
-│ GitHub Copilot  │
-│   (AI Model)    │
-└────────┬────────┘
-         │ Language Model API
-         ▼
-┌─────────────────────────┐
-│ LSP Language Model      │
-│ Tools Extension         │
-│ (This Extension)        │
-└────────┬────────────────┘
-         │ VS Code executeCommand
-         ▼
-┌─────────────────────────┐
-│ VS Code Language        │
-│ Server Client           │
-└────────┬────────────────┘
-         │ LSP Protocol
-         ▼
-┌─────────────────────────┐
-│ Language Server         │
-│ (clangd, Pylance, etc.) │
-└─────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Your C++ Project                                           │
+│  ├── src/                                                   │
+│  ├── include/                                               │
+│  └── compile_commands.json  ← clangd reads this           │
+└────────────────┬────────────────────────────────────────────┘
+                 │
+                 ▼ (clangd parses and uses)
+┌─────────────────────────────────────────────────────────────┐
+│  clangd Language Server Process                             │
+│  - Knows compilation flags                                  │
+│  - Knows include paths                                      │
+│  - Provides accurate IntelliSense                           │
+└────────────────┬────────────────────────────────────────────┘
+                 │
+                 ▼ (LSP protocol)
+┌─────────────────────────────────────────────────────────────┐
+│  VSCode + clangd extension                                  │
+│  - Manages clangd process                                   │
+│  - Handles LSP communication                                │
+└────────────────┬────────────────────────────────────────────┘
+                 │
+                 ▼ (vscode.executeDefinitionProvider)
+┌─────────────────────────────────────────────────────────────┐
+│  LSP MCP Bridge                                             │
+│  - Uses results from clangd (via VSCode)                    │
+│  - Never reads compile_commands.json itself                 │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Key Points:**
-1. **No additional language server setup required** - Uses existing language servers already running in VS Code
-2. **Language agnostic** - Works with any LSP-compliant language server
-3. **Zero configuration** - Automatically works with whatever language servers you have installed
-4. **Reuses existing connections** - No duplicate server processes
+### The Bridge's Perspective
 
-### Clangd Integration Example
+From the LSP MCP Bridge's perspective:
 
-For C++ projects using clangd:
+1. **Configuration is transparent** - The bridge doesn't know or care about `compile_commands.json`
+2. **Inherits accuracy** - If clangd is configured correctly, the bridge gets accurate results
+3. **No special handling** - C++ is treated the same as Python, Rust, Go, etc.
+4. **User's responsibility** - Users must set up clangd (and compile_commands.json) themselves
 
-1. **User installs clangd extension** (e.g., `llvm-vs-code-extensions.vscode-clangd`)
-2. **Clangd extension starts the clangd server** when C++ files are opened
-3. **Our extension connects** to the already-running clangd server
-4. **GitHub Copilot can now** query clangd through our tools:
-   - Find symbol definitions
-   - Get references
-   - Hover information
-   - Code completions
-   - Document symbols
-   - And more!
+## Comparison: LSP MCP Bridge vs. clangd as IntelliSense
 
-### Comparison with Direct MCP Servers
+### clangd Extension (vscode-clangd)
 
-Some projects implement direct MCP servers that bundle language server capabilities:
-- **Bundle their own language server** (e.g., embed clangd binary) - ensures consistency
-- **Require `compile_commands.json`** setup - provides more control
-- **Start a separate server process** - isolated from VS Code
-- **Need language-specific configuration** - allows fine-tuning
+**Purpose:** Replace Visual Studio Code's built-in C/C++ IntelliSense
 
-**Our approach is different (trade-offs):**
-- ✅ No bundled binaries - uses whatever's installed (may vary by user)
-- ✅ No `compile_commands.json` dependency - leverages VS Code's existing setup (less control)
-- ✅ No separate processes - reuses active language servers (lighter weight)
-- ✅ Works with ANY language that has an LSP server (more versatile)
+**What it does:**
+- Starts and manages the clangd language server process
+- Communicates with clangd via LSP (JSON-RPC)
+- Provides IntelliSense features in the editor
+- Shows diagnostics, errors, warnings inline
+- Powers autocomplete, go-to-definition, etc.
 
-**Choose direct MCP servers when:**
-- You need consistent behavior across all environments
-- You want fine-grained control over language server settings
-- You're building a standalone tool outside VS Code
+**User sees:** Better, faster, more accurate C++ code completion and navigation **in the editor**
 
-**Choose our approach when:**
-- You're already using VS Code with configured language servers
-- You want zero additional setup
-- You need multi-language support
-- You prefer lighter weight integration
+### LSP MCP Bridge (this extension)
 
-### Why This Is Better
+**Purpose:** Expose language server capabilities to AI tools like GitHub Copilot
 
-**For Users:**
-- Works immediately with their existing setup
-- No additional configuration needed
-- Supports any language they already have configured
-- Lighter weight (no duplicate servers)
+**What it does:**
+- Registers tools with VSCode's Language Model API
+- Proxies AI tool calls to VSCode's language features
+- Formats results for AI consumption
+- Works with ANY language server (not just clangd)
 
-**For Developers:**
-- Don't need to bundle language servers
-- Don't need language-specific code
-- Universal implementation works everywhere
-- Easier to maintain and update
+**User sees:** GitHub Copilot has deeper understanding of codebase and can answer questions about code structure, find definitions, references, etc.
 
-## Migration Notes
+### They Work Together
 
-If you were previously using the MCP server features:
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Developer Experience                                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  [Editor with clangd IntelliSense]  ←→  [GitHub Copilot]  │
+│                                                             │
+│  Developer types code               AI assistant helps     │
+│  Gets accurate autocomplete         with intelligent       │
+│  Sees inline errors                 code understanding     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+        │                                       │
+        │                                       │
+        ▼                                       ▼
+┌──────────────────────┐          ┌──────────────────────────┐
+│  clangd Extension    │          │  LSP MCP Bridge          │
+│  (Language Server)   │          │  (AI Tools Bridge)       │
+└──────────┬───────────┘          └───────────┬──────────────┘
+           │                                  │
+           │        ┌─────────────────────────┘
+           │        │
+           ▼        ▼
+      ┌────────────────────┐
+      │  VSCode LSP Client │
+      └─────────┬──────────┘
+                │
+                ▼
+         ┌────────────┐
+         │   clangd   │
+         │  (process) │
+         └────────────┘
+```
 
-### What Changed
-- ✅ All 10 Language Model Tools still work exactly the same
-- ✅ GitHub Copilot integration unchanged and fully functional
-- ❌ External MCP clients can no longer connect to this extension
-- ❌ MCP protocol endpoints removed
+**Both extensions enhance the developer experience, but in different ways:**
+- **clangd extension** → Better IntelliSense in the editor
+- **LSP MCP Bridge** → Better AI understanding of your code
 
-### What Still Works
-- ✅ All LSP capabilities (definition, references, hover, completion, etc.)
-- ✅ GitHub Copilot automatic tool usage
-- ✅ Manual testing commands
-- ✅ All programming languages
-- ✅ All language servers
+## Key Architectural Advantages
 
-### If You Need MCP Server
-If you specifically need an MCP server for external clients:
-- Use a dedicated MCP server implementation
-- This extension now focuses on GitHub Copilot integration
-- The Language Model Tools approach is better suited for Copilot use cases
+### 1. Universal Language Support
+Works with ANY language server without modification. No language-specific code.
 
-## Future Direction
+### 2. Zero Configuration
+If a language extension works in VSCode, it works with this bridge automatically.
 
-Going forward, this extension will:
-1. **Focus exclusively** on GitHub Copilot integration via Language Model Tools
-2. **Leverage new Language Model API features** as they become available
-3. **Optimize for Copilot use cases** rather than generic MCP clients
-4. **Maintain simplicity** and ease of use
+### 3. Reuses Infrastructure
+Doesn't duplicate LSP clients, process management, or protocol handling.
 
-## Conclusion
+### 4. Lightweight
+~70KB of code vs. hundreds of KB for full LSP client implementations.
 
-The switch to Language Model Tools only provides:
-- 🚀 **Better performance** (92% smaller bundle)
-- 🎯 **Simpler architecture** (single code path)
-- 🔧 **Easier maintenance** (fewer dependencies)
-- 💪 **Official support** (VS Code API)
-- ✨ **Same functionality** (all 10 tools work identically)
+### 5. Maintainable
+VSCode handles breaking changes in LSP protocol. Bridge only depends on stable command API.
 
-This change makes the extension more focused, maintainable, and efficient while providing the same great experience for GitHub Copilot users.
+### 6. Consistent
+Same bridge code serves Python, C++, Rust, Go, TypeScript, etc.
+
+## Summary
+
+The **LSP MCP Bridge** is a **smart adapter** that:
+
+1. **Sits between** GitHub Copilot and any language server
+2. **Uses** VSCode's Language Model API to register tools
+3. **Leverages** VSCode's built-in language features commands
+4. **Reuses** existing language server connections (including clangd)
+5. **Inherits** all configuration from user's installed extensions
+6. **Provides** universal LSP access without implementing LSP
+
+**The "bridge" is the abstraction layer** that makes language server capabilities available to AI tools through standardized VSCode APIs, without requiring direct protocol implementation or process management.
+
+This architecture is fundamentally different from other clangd MCP servers because it's **universal, reusable, and zero-configuration** rather than **language-specific, standalone, and requiring setup**.
