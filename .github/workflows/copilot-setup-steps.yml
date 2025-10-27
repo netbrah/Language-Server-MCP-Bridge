@@ -13,8 +13,8 @@ on:
         type: boolean
 
 jobs:
-  setup-validation:
-    name: Validate Copilot Integration Setup
+  copilot-setup-steps:
+    name: GitHub Copilot Integration Setup
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -152,44 +152,7 @@ jobs:
           echo "🧪 Running test suite..."
           npm test
 
-      - name: Generate setup summary
-        if: always()
-        run: |
-          echo "📊 GitHub Copilot Integration Setup Summary"
-          echo "=============================================="
-          echo ""
-          echo "Extension Information:"
-          echo "  Name: $(grep -m 1 '"name"' package.json | cut -d'"' -f4)"
-          echo "  Display Name: $(grep -m 1 '"displayName"' package.json | cut -d'"' -f4)"
-          echo "  Version: $(grep -m 1 '"version"' package.json | cut -d'"' -f4)"
-          echo ""
-          echo "Copilot Integration:"
-          echo "  ✓ Language Model Tools API enabled"
-          echo "  ✓ 10 LSP tools registered"
-          echo "  ✓ Tools available through GitHub Copilot"
-          echo ""
-          echo "Available Tools:"
-          echo "  1. lsp_definition - Find symbol definitions"
-          echo "  2. lsp_references - Find symbol references"
-          echo "  3. lsp_hover - Get symbol information"
-          echo "  4. lsp_completion - Code completion"
-          echo "  5. lsp_workspace_symbols - Search workspace"
-          echo "  6. lsp_document_symbols - Document outline"
-          echo "  7. lsp_rename_symbol - Preview renames"
-          echo "  8. lsp_code_actions - Quick fixes"
-          echo "  9. lsp_format_document - Format code"
-          echo "  10. lsp_signature_help - Function signatures"
-          echo ""
-          echo "Setup Complete! ✅"
-
-  documentation:
-    name: Generate Setup Documentation
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Create setup guide
+      - name: Create setup documentation
         run: |
           cat << 'EOF' > COPILOT_SETUP.md
           # GitHub Copilot Integration Setup Guide
@@ -280,10 +243,36 @@ jobs:
           path: COPILOT_SETUP.md
           retention-days: 30
 
-      - name: Display setup instructions
+      - name: Generate setup summary
+        if: always()
         run: |
-          echo "📖 GitHub Copilot Setup Instructions"
-          echo "====================================="
+          echo "📊 GitHub Copilot Integration Setup Summary"
+          echo "=============================================="
+          echo ""
+          echo "Extension Information:"
+          echo "  Name: $(grep -m 1 '"name"' package.json | cut -d'"' -f4)"
+          echo "  Display Name: $(grep -m 1 '"displayName"' package.json | cut -d'"' -f4)"
+          echo "  Version: $(grep -m 1 '"version"' package.json | cut -d'"' -f4)"
+          echo ""
+          echo "Copilot Integration:"
+          echo "  ✓ Language Model Tools API enabled"
+          echo "  ✓ 10 LSP tools registered"
+          echo "  ✓ Tools available through GitHub Copilot"
+          echo ""
+          echo "Available Tools:"
+          echo "  1. lsp_definition - Find symbol definitions"
+          echo "  2. lsp_references - Find symbol references"
+          echo "  3. lsp_hover - Get symbol information"
+          echo "  4. lsp_completion - Code completion"
+          echo "  5. lsp_workspace_symbols - Search workspace"
+          echo "  6. lsp_document_symbols - Document outline"
+          echo "  7. lsp_rename_symbol - Preview renames"
+          echo "  8. lsp_code_actions - Quick fixes"
+          echo "  9. lsp_format_document - Format code"
+          echo "  10. lsp_signature_help - Function signatures"
+          echo ""
+          echo "📖 Setup Instructions"
+          echo "===================="
           echo ""
           echo "To use this extension with GitHub Copilot:"
           echo ""
@@ -311,4 +300,4 @@ jobs:
           echo "   - Ask Copilot about your code and it will use LSP features"
           echo "   - Example: 'Where is this function defined?'"
           echo ""
-          echo "✅ Setup complete! The tools are now available to GitHub Copilot."
+          echo "✅ Setup Complete! The tools are now available to GitHub Copilot."
