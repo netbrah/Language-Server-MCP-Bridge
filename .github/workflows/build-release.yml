@@ -75,38 +75,26 @@ jobs:
           echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.package-version.outputs.version }}-build.${{ github.run_number }}
-          release_name: Release v${{ steps.package-version.outputs.version }}-build.${{ github.run_number }}
-          body: |
-            ## Changes in this build
+          TAG_NAME: v${{ steps.package-version.outputs.version }}-build.${{ github.run_number }}
+        run: |
+          # Create the release with the VSIX file attached
+          gh release create "$TAG_NAME" \
+            --title "Release $TAG_NAME" \
+            --notes "## Changes in this build
 
-            ${{ steps.changelog.outputs.changelog }}
+          ${{ steps.changelog.outputs.changelog }}
 
-            ## Installation
+          ## Installation
 
-            Download the `lsp-mcp-bridge.vsix` file and install it in VS Code:
-            ```
-            code --install-extension lsp-mcp-bridge.vsix
-            ```
+          Download the \`lsp-mcp-bridge.vsix\` file and install it in VS Code:
+          \`\`\`
+          code --install-extension lsp-mcp-bridge.vsix
+          \`\`\`
 
-            Or manually: Extensions → Views and More Actions (•••) → Install from VSIX
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./lsp-mcp-bridge.vsix
-          asset_name: lsp-mcp-bridge.vsix
-          asset_content_type: application/zip
+          Or manually: Extensions → Views and More Actions (•••) → Install from VSIX" \
+            lsp-mcp-bridge.vsix
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

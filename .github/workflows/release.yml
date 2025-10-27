@@ -1,13 +1,17 @@
 name: Release to Marketplace
 
-# Trigger on release creation
+# Trigger on release creation (only for version tags like v1.0.0, not build tags like v1.0.0-build.1)
+# Note: This workflow is kept for compatibility with manual releases.
+# For automated releases, use the "Publish to Marketplace" workflow dispatch.
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Only run for version tags (e.g., v1.0.0), not build tags (e.g., v1.0.0-build.1)
+    if: ${{ !contains(github.event.release.tag_name, '-build.') }}
     steps:
       # Checkout the repository
       - name: Checkout
