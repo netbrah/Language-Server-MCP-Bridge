@@ -732,6 +732,54 @@
             "item"
           ]
         }
+      },
+      {
+        "name": "lsp_explore_symbol",
+        "tags": [
+          "lsp",
+          "explore",
+          "comprehensive",
+          "super-tool",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "explore",
+        "displayName": "Explore Symbol Comprehensively",
+        "modelDescription": "SUPER TOOL: Automatically explores a symbol at a position by intelligently calling multiple LSP tools and aggregating results. Use this AUTOMATICALLY when the user asks broad questions like 'tell me about this symbol', 'analyze this function', 'what is this', or wants comprehensive information. This tool orchestrates: hover info, definitions, references, implementations, call hierarchy (who calls/what it calls), and type hierarchy (parent/child types). Returns a complete analysis without requiring multiple tool calls or understanding prepare/query patterns.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            },
+            "depth": {
+              "type": "number",
+              "description": "Exploration depth (default: 1, not yet fully implemented)"
+            },
+            "includeCallHierarchy": {
+              "type": "boolean",
+              "description": "Include call hierarchy analysis (default: true)"
+            },
+            "includeTypeHierarchy": {
+              "type": "boolean",
+              "description": "Include type hierarchy analysis (default: true)"
+            }
+          },
+          "required": [
+            "uri",
+            "line",
+            "character"
+          ]
+        }
       }
     ]
   },

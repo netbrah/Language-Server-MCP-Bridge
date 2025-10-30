@@ -77,6 +77,15 @@ interface ToolSignatureHelpInput extends ToolPositionInput {
 }
 
 /**
+ * Input schema for explore symbol super tool
+ */
+interface ToolExploreSymbolInput extends ToolPositionInput {
+    depth?: number;
+    includeCallHierarchy?: boolean;
+    includeTypeHierarchy?: boolean;
+}
+
+/**
  * Register all Language Model Tools for GitHub Copilot integration
  */
 export function registerLanguageModelTools(languageClient: VSCodeLanguageClient): vscode.Disposable[] {
@@ -870,7 +879,220 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
         }
     }));
 
+    // Register lsp_explore_symbol super tool - orchestrates multiple tools
+    disposables.push(vscode.lm.registerTool('lsp_explore_symbol', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<ToolExploreSymbolInput>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            const depth = input.depth || 1;
+            const includeCallHierarchy = input.includeCallHierarchy !== false;
+            const includeTypeHierarchy = input.includeTypeHierarchy !== false;
+            
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                const position = { line: input.line, character: input.character };
+                const sections: string[] = [];
+                
+                // Section 1: Basic Symbol Information
+                sections.push('## SYMBOL INFORMATION');
+                try {
+                    const hover = await languageClient.getHover(input.uri, position);
+                    if (hover) {
+                        const hoverText = typeof hover.contents === 'string' 
+                            ? hover.contents 
+                            : hover.contents.value;
+                        sections.push(`\n**Hover Info:**\n${hoverText}`);
+                    }
+                } catch (error) {
+                    sections.push('\n**Hover Info:** Not available');
+                }
+
+                // Section 2: Definitions and Declarations
+                sections.push('\n\n## LOCATIONS');
+                try {
+                    const definitions = await languageClient.getDefinition(input.uri, position);
+                    if (definitions.length > 0) {
+                        sections.push(`\n**Definition:** ${formatLocations(definitions)}`);
+                    }
+                } catch (error) {
+                    // Ignore
+                }
+
+                try {
+                    const typeDefinitions = await languageClient.getTypeDefinition(input.uri, position);
+                    if (typeDefinitions.length > 0) {
+                        sections.push(`**Type Definition:** ${formatLocations(typeDefinitions)}`);
+                    }
+                } catch (error) {
+                    // Ignore
+                }
+
+                try {
+                    const declarations = await languageClient.getDeclaration(input.uri, position);
+                    if (declarations.length > 0) {
+                        sections.push(`**Declaration:** ${formatLocations(declarations)}`);
+                    }
+                } catch (error) {
+                    // Ignore
+                }
+
+                // Section 3: References
+                sections.push('\n\n## USAGE');
+                try {
+                    const references = await languageClient.getReferences(input.uri, position, true);
+                    if (references.length > 0) {
+                        sections.push(`\n**References:** ${references.length} locations found`);
+                        if (references.length <= 10) {
+                            sections.push(formatLocations(references));
+                        } else {
+                            sections.push(formatLocations(references.slice(0, 10)));
+                            sections.push(`\n... and ${references.length - 10} more`);
+                        }
+                    }
+                } catch (error) {
+                    sections.push('\n**References:** Not available');
+                }
+
+                // Section 4: Implementations
+                try {
+                    const implementations = await languageClient.getImplementation(input.uri, position);
+                    if (implementations.length > 0) {
+                        sections.push(`\n**Implementations:** ${implementations.length} found`);
+                        sections.push(formatLocations(implementations));
+                    }
+                } catch (error) {
+                    // Ignore if not applicable
+                }
+
+                // Section 5: Call Hierarchy
+                if (includeCallHierarchy) {
+                    sections.push('\n\n## CALL HIERARCHY');
+                    try {
+                        const callHierarchyItems = await languageClient.prepareCallHierarchy(input.uri, position);
+                        if (callHierarchyItems.length > 0) {
+                            const item = callHierarchyItems[0];
+                            
+                            // Get incoming calls
+                            try {
+                                const incomingCalls = await languageClient.getCallHierarchyIncomingCalls(item);
+                                if (incomingCalls.length > 0) {
+                                    sections.push(`\n**Incoming Calls (${incomingCalls.length}):**`);
+                                    incomingCalls.slice(0, 5).forEach((call, idx) => {
+                                        const uri = vscode.Uri.parse(call.from.uri);
+                                        const displayPath = vscode.workspace.asRelativePath(uri);
+                                        sections.push(`${idx + 1}. ${call.from.name} - ${displayPath}:${call.from.range.start.line + 1}`);
+                                    });
+                                    if (incomingCalls.length > 5) {
+                                        sections.push(`... and ${incomingCalls.length - 5} more`);
+                                    }
+                                }
+                            } catch (error) {
+                                // Ignore
+                            }
+
+                            // Get outgoing calls
+                            try {
+                                const outgoingCalls = await languageClient.getCallHierarchyOutgoingCalls(item);
+                                if (outgoingCalls.length > 0) {
+                                    sections.push(`\n**Outgoing Calls (${outgoingCalls.length}):**`);
+                                    outgoingCalls.slice(0, 5).forEach((call, idx) => {
+                                        const uri = vscode.Uri.parse(call.to.uri);
+                                        const displayPath = vscode.workspace.asRelativePath(uri);
+                                        sections.push(`${idx + 1}. ${call.to.name} - ${displayPath}:${call.to.range.start.line + 1}`);
+                                    });
+                                    if (outgoingCalls.length > 5) {
+                                        sections.push(`... and ${outgoingCalls.length - 5} more`);
+                                    }
+                                }
+                            } catch (error) {
+                                // Ignore
+                            }
+                        }
+                    } catch (error) {
+                        sections.push('\n**Call Hierarchy:** Not available for this symbol');
+                    }
+                }
+
+                // Section 6: Type Hierarchy
+                if (includeTypeHierarchy) {
+                    sections.push('\n\n## TYPE HIERARCHY');
+                    try {
+                        const typeHierarchyItems = await languageClient.prepareTypeHierarchy(input.uri, position);
+                        if (typeHierarchyItems.length > 0) {
+                            const item = typeHierarchyItems[0];
+                            
+                            // Get supertypes
+                            try {
+                                const supertypes = await languageClient.getTypeHierarchySupertypes(item);
+                                if (supertypes.length > 0) {
+                                    sections.push(`\n**Supertypes (${supertypes.length}):**`);
+                                    supertypes.forEach((type, idx) => {
+                                        const uri = vscode.Uri.parse(type.uri);
+                                        const displayPath = vscode.workspace.asRelativePath(uri);
+                                        const kindStr = getSymbolKindString(type.kind);
+                                        sections.push(`${idx + 1}. ${type.name} (${kindStr}) - ${displayPath}:${type.range.start.line + 1}`);
+                                    });
+                                }
+                            } catch (error) {
+                                // Ignore
+                            }
+
+                            // Get subtypes
+                            try {
+                                const subtypes = await languageClient.getTypeHierarchySubtypes(item);
+                                if (subtypes.length > 0) {
+                                    sections.push(`\n**Subtypes (${subtypes.length}):**`);
+                                    subtypes.slice(0, 5).forEach((type, idx) => {
+                                        const uri = vscode.Uri.parse(type.uri);
+                                        const displayPath = vscode.workspace.asRelativePath(uri);
+                                        const kindStr = getSymbolKindString(type.kind);
+                                        sections.push(`${idx + 1}. ${type.name} (${kindStr}) - ${displayPath}:${type.range.start.line + 1}`);
+                                    });
+                                    if (subtypes.length > 5) {
+                                        sections.push(`... and ${subtypes.length - 5} more`);
+                                    }
+                                }
+                            } catch (error) {
+                                // Ignore
+                            }
+                        }
+                    } catch (error) {
+                        sections.push('\n**Type Hierarchy:** Not available for this symbol');
+                    }
+                }
+
+                // Build final response
+                const response = `# Symbol Exploration Results\n\n` +
+                    `**Location:** ${vscode.workspace.asRelativePath(vscode.Uri.parse(input.uri))}:${input.line + 1}:${input.character + 1}\n\n` +
+                    sections.join('\n');
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error exploring symbol: ${error}`)
+                ]);
+            }
+        }
+    }));
+
     return disposables;
+}
+
+/**
+ * Helper function to format locations
+ */
+function formatLocations(locations: any[]): string {
+    return locations.map((loc, index) => {
+        const uri = vscode.Uri.parse(loc.uri);
+        const displayPath = vscode.workspace.asRelativePath(uri);
+        return `${index + 1}. ${displayPath}:${loc.range.start.line + 1}:${loc.range.start.character + 1}`;
+    }).join('\n');
 }
 
 /**
