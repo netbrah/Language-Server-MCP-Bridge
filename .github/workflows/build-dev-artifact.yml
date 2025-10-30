@@ -98,10 +98,16 @@ jobs:
             echo "Deleted old release: $TAG_NAME"
           fi
           
-          # Delete the tag if it exists
-          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+          # Delete the remote tag if it exists (check remote, not local)
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
             git push origin :refs/tags/"$TAG_NAME" 2>/dev/null || true
-            echo "Deleted old tag: $TAG_NAME"
+            echo "Deleted remote tag: $TAG_NAME"
+          fi
+          
+          # Delete the local tag if it exists
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            git tag -d "$TAG_NAME"
+            echo "Deleted local tag: $TAG_NAME"
           fi
 
       - name: Create/Update Release for this branch
