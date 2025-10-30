@@ -795,22 +795,26 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			// Convert back to VSCode format
-			const vscodeItem: vscode.CallHierarchyItem = {
-				name: item.name,
-				kind: item.kind,
-				tags: item.tags,
-				detail: item.detail,
-				uri: vscode.Uri.parse(item.uri),
-				range: new vscode.Range(
+			// Convert back to VSCode format using the proper constructor
+			const vscodeItem = new vscode.CallHierarchyItem(
+				item.kind,
+				item.name,
+				item.detail || '',
+				vscode.Uri.parse(item.uri),
+				new vscode.Range(
 					new vscode.Position(item.range.start.line, item.range.start.character),
 					new vscode.Position(item.range.end.line, item.range.end.character)
 				),
-				selectionRange: new vscode.Range(
+				new vscode.Range(
 					new vscode.Position(item.selectionRange.start.line, item.selectionRange.start.character),
 					new vscode.Position(item.selectionRange.end.line, item.selectionRange.end.character)
 				)
-			};
+			);
+			
+			// Set tags if provided (readonly property, set after construction)
+			if (item.tags) {
+				(vscodeItem as any).tags = item.tags;
+			}
 
 			const incomingCalls = await vscode.commands.executeCommand<vscode.CallHierarchyIncomingCall[]>(
 				'vscode.executeCallHierarchyIncomingCallsProvider',
@@ -843,22 +847,26 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			// Convert back to VSCode format
-			const vscodeItem: vscode.CallHierarchyItem = {
-				name: item.name,
-				kind: item.kind,
-				tags: item.tags,
-				detail: item.detail,
-				uri: vscode.Uri.parse(item.uri),
-				range: new vscode.Range(
+			// Convert back to VSCode format using the proper constructor
+			const vscodeItem = new vscode.CallHierarchyItem(
+				item.kind,
+				item.name,
+				item.detail || '',
+				vscode.Uri.parse(item.uri),
+				new vscode.Range(
 					new vscode.Position(item.range.start.line, item.range.start.character),
 					new vscode.Position(item.range.end.line, item.range.end.character)
 				),
-				selectionRange: new vscode.Range(
+				new vscode.Range(
 					new vscode.Position(item.selectionRange.start.line, item.selectionRange.start.character),
 					new vscode.Position(item.selectionRange.end.line, item.selectionRange.end.character)
 				)
-			};
+			);
+			
+			// Set tags if provided (readonly property, set after construction)
+			if (item.tags) {
+				(vscodeItem as any).tags = item.tags;
+			}
 
 			const outgoingCalls = await vscode.commands.executeCommand<vscode.CallHierarchyOutgoingCall[]>(
 				'vscode.executeCallHierarchyOutgoingCallsProvider',
@@ -920,22 +928,26 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			// Convert back to VSCode format
-			const vscodeItem: vscode.TypeHierarchyItem = {
-				name: item.name,
-				kind: item.kind,
-				tags: item.tags,
-				detail: item.detail,
-				uri: vscode.Uri.parse(item.uri),
-				range: new vscode.Range(
+			// Convert back to VSCode format using the proper constructor
+			const vscodeItem = new vscode.TypeHierarchyItem(
+				item.kind,
+				item.name,
+				item.detail || '',
+				vscode.Uri.parse(item.uri),
+				new vscode.Range(
 					new vscode.Position(item.range.start.line, item.range.start.character),
 					new vscode.Position(item.range.end.line, item.range.end.character)
 				),
-				selectionRange: new vscode.Range(
+				new vscode.Range(
 					new vscode.Position(item.selectionRange.start.line, item.selectionRange.start.character),
 					new vscode.Position(item.selectionRange.end.line, item.selectionRange.end.character)
 				)
-			};
+			);
+			
+			// Set tags if provided (readonly property, set after construction)
+			if (item.tags) {
+				(vscodeItem as any).tags = item.tags;
+			}
 
 			const supertypes = await vscode.commands.executeCommand<vscode.TypeHierarchyItem[]>(
 				'vscode.provideSupertypes',
@@ -962,22 +974,26 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			// Convert back to VSCode format
-			const vscodeItem: vscode.TypeHierarchyItem = {
-				name: item.name,
-				kind: item.kind,
-				tags: item.tags,
-				detail: item.detail,
-				uri: vscode.Uri.parse(item.uri),
-				range: new vscode.Range(
+			// Convert back to VSCode format using the proper constructor
+			const vscodeItem = new vscode.TypeHierarchyItem(
+				item.kind,
+				item.name,
+				item.detail || '',
+				vscode.Uri.parse(item.uri),
+				new vscode.Range(
 					new vscode.Position(item.range.start.line, item.range.start.character),
 					new vscode.Position(item.range.end.line, item.range.end.character)
 				),
-				selectionRange: new vscode.Range(
+				new vscode.Range(
 					new vscode.Position(item.selectionRange.start.line, item.selectionRange.start.character),
 					new vscode.Position(item.selectionRange.end.line, item.selectionRange.end.character)
 				)
-			};
+			);
+			
+			// Set tags if provided (readonly property, set after construction)
+			if (item.tags) {
+				(vscodeItem as any).tags = item.tags;
+			}
 
 			const subtypes = await vscode.commands.executeCommand<vscode.TypeHierarchyItem[]>(
 				'vscode.provideSubtypes',
