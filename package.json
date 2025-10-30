@@ -780,6 +780,36 @@
             "character"
           ]
         }
+      },
+      {
+        "name": "lsp_explore_references",
+        "tags": [
+          "lsp",
+          "references",
+          "search",
+          "usage",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "explore_references",
+        "displayName": "Explore Symbol References",
+        "modelDescription": "INTELLIGENT TOOL: Finds all references to a symbol by name across the workspace. Use this AUTOMATICALLY when the user asks 'where is X used', 'find usages of X', 'show me references to X', or provides a symbol name to explore. Combines workspace symbol search with references lookup - no need for position/URI. Just provide the symbol name (e.g., 'Keyserver::secondaryIsAPrimary' or 'myFunction'). Returns organized list of all references grouped by file with line numbers. Perfect for understanding symbol usage patterns without knowing exact locations.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Symbol name to search for (e.g., 'ClassName::methodName', 'functionName', 'variableName'). Can be fully qualified or partial name."
+            },
+            "maxResults": {
+              "type": "number",
+              "description": "Maximum number of references to display (default: 100)"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
       }
     ]
   },

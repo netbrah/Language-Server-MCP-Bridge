@@ -86,6 +86,14 @@ interface ToolExploreSymbolInput extends ToolPositionInput {
 }
 
 /**
+ * Input schema for explore references tool
+ */
+interface ToolExploreReferencesInput {
+    query: string;
+    maxResults?: number;
+}
+
+/**
  * Register all Language Model Tools for GitHub Copilot integration
  */
 export function registerLanguageModelTools(languageClient: VSCodeLanguageClient): vscode.Disposable[] {
@@ -1154,6 +1162,107 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
             } catch (error) {
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(`Error exploring symbol: ${error}`)
+                ]);
+            }
+        }
+    }));
+
+    // Register lsp_explore_references tool - intelligent reference exploration
+    disposables.push(vscode.lm.registerTool('lsp_explore_references', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<ToolExploreReferencesInput>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            const maxResults = input.maxResults || 100;
+            
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                // Step 1: Search for the symbol using workspace symbols
+                const symbols = await languageClient.getWorkspaceSymbols(input.query);
+                
+                if (symbols.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(`No symbol found matching "${input.query}".\n\nSuggestions:\n- Check the symbol name spelling\n- Try a partial name (e.g., "secondaryIsAPrimary" instead of "Keyserver::secondaryIsAPrimary")\n- Ensure the file is indexed by the language server`)
+                    ]);
+                }
+
+                // Use the first matching symbol
+                const symbol = symbols[0];
+                const symbolUri = symbol.location.uri;
+                const symbolPosition = symbol.location.range.start;
+
+                // Step 2: Get references for this symbol
+                const references = await languageClient.getReferences(symbolUri, symbolPosition, true);
+                
+                if (references.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(`Found symbol "${symbol.name}" but no references found.\n\nThis might mean:\n- The symbol is defined but never used\n- The language server hasn't finished indexing\n- The symbol is in a different compilation unit`)
+                    ]);
+                }
+
+                // Step 3: Format the results
+                const sections: string[] = [];
+                sections.push(`# Reference Exploration: ${symbol.name}`);
+                sections.push(`\n**Symbol Type:** ${getSymbolKindString(symbol.kind)}`);
+                sections.push(`**Definition:** ${vscode.workspace.asRelativePath(vscode.Uri.parse(symbolUri))}:${symbolPosition.line + 1}:${symbolPosition.character + 1}`);
+                sections.push(`\n**Found ${references.length} reference(s):**\n`);
+
+                // Group references by file
+                const referencesByFile = new Map<string, Array<{line: number, character: number}>>();
+                for (const ref of references) {
+                    const uri = vscode.Uri.parse(ref.uri);
+                    const relativePath = vscode.workspace.asRelativePath(uri);
+                    
+                    if (!referencesByFile.has(relativePath)) {
+                        referencesByFile.set(relativePath, []);
+                    }
+                    referencesByFile.get(relativePath)!.push({
+                        line: ref.range.start.line,
+                        character: ref.range.start.character
+                    });
+                }
+
+                // Sort files and format output
+                const sortedFiles = Array.from(referencesByFile.keys()).sort();
+                let displayedCount = 0;
+                
+                for (const file of sortedFiles) {
+                    const refs = referencesByFile.get(file)!;
+                    // Sort by line number
+                    refs.sort((a, b) => a.line - b.line);
+                    
+                    sections.push(`\n**${file}** (${refs.length} reference${refs.length > 1 ? 's' : ''}):`);
+                    
+                    for (const ref of refs) {
+                        if (displayedCount >= maxResults) {
+                            sections.push(`\n... and ${references.length - displayedCount} more references (use maxResults parameter to show more)`);
+                            break;
+                        }
+                        sections.push(`  Line ${ref.line + 1}:${ref.character + 1}`);
+                        displayedCount++;
+                    }
+                    
+                    if (displayedCount >= maxResults) {
+                        break;
+                    }
+                }
+
+                // Add summary statistics
+                sections.push(`\n## Summary`);
+                sections.push(`- Total references: ${references.length}`);
+                sections.push(`- Files with references: ${referencesByFile.size}`);
+                sections.push(`- Symbol: ${symbol.name} (${getSymbolKindString(symbol.kind)})`);
+
+                const response = sections.join('\n');
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error exploring references: ${error}`)
                 ]);
             }
         }
