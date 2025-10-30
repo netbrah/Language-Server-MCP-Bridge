@@ -39,6 +39,27 @@ class MockLanguageClient implements LanguageClient {
         return this.mockDefinitions;
     }
 
+    async getTypeDefinition(uri: string, position: LSPPosition): Promise<LSPLocation[]> {
+        if (!this.ready) {
+            throw new Error('Client not ready');
+        }
+        return [];
+    }
+
+    async getDeclaration(uri: string, position: LSPPosition): Promise<LSPLocation[]> {
+        if (!this.ready) {
+            throw new Error('Client not ready');
+        }
+        return [];
+    }
+
+    async getImplementation(uri: string, position: LSPPosition): Promise<LSPLocation[]> {
+        if (!this.ready) {
+            throw new Error('Client not ready');
+        }
+        return [];
+    }
+
     async getReferences(uri: string, position: LSPPosition, includeDeclaration?: boolean): Promise<LSPLocation[]> {
         if (!this.ready) {
             throw new Error('Client not ready');
@@ -82,6 +103,30 @@ class MockLanguageClient implements LanguageClient {
 
     async getSignatureHelp(uri: string, position: LSPPosition, triggerKind?: number, triggerCharacter?: string): Promise<any> {
         return null;
+    }
+
+    async prepareCallHierarchy(uri: string, position: LSPPosition): Promise<any[]> {
+        return [];
+    }
+
+    async getCallHierarchyIncomingCalls(item: any): Promise<any[]> {
+        return [];
+    }
+
+    async getCallHierarchyOutgoingCalls(item: any): Promise<any[]> {
+        return [];
+    }
+
+    async prepareTypeHierarchy(uri: string, position: LSPPosition): Promise<any[]> {
+        return [];
+    }
+
+    async getTypeHierarchySupertypes(item: any): Promise<any[]> {
+        return [];
+    }
+
+    async getTypeHierarchySubtypes(item: any): Promise<any[]> {
+        return [];
     }
 
     isReady(): boolean {

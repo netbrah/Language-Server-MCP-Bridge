@@ -10,7 +10,11 @@ import {
 	LSPWorkspaceEdit,
 	LSPTextEdit,
 	LSPCodeAction,
-	LSPSignatureHelp
+	LSPSignatureHelp,
+	LSPCallHierarchyItem,
+	LSPCallHierarchyIncomingCall,
+	LSPCallHierarchyOutgoingCall,
+	LSPTypeHierarchyItem
 } from './types';
 
 /**
@@ -658,6 +662,456 @@ export class VSCodeLanguageClient implements LanguageClient {
 			console.error('Error getting completions:', error);
 			return { isIncomplete: false, items: [] }; // Return empty list instead of throwing
 		}
+	}
+
+	/**
+	 * Get type definition locations using VSCode's built-in type definition provider
+	 */
+	public async getTypeDefinition(uri: string, position: LSPPosition): Promise<LSPLocation[]> {
+		if (!this.isReady()) {
+			throw new Error('Client not initialized');
+		}
+
+		try {
+			await new Promise(resolve => setTimeout(resolve, 100));
+			
+			const document = await this.getDocument(uri);
+			const vscodePosition = new vscode.Position(position.line, position.character);
+
+			const typeDefinitions = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
+				'vscode.executeTypeDefinitionProvider',
+				document.uri,
+				vscodePosition
+			);
+
+			if (!typeDefinitions || typeDefinitions.length === 0) {
+				return [];
+			}
+
+			return this.convertLocations(typeDefinitions);
+		} catch (error) {
+			console.error('Error getting type definitions:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Get declaration locations using VSCode's built-in declaration provider
+	 */
+	public async getDeclaration(uri: string, position: LSPPosition): Promise<LSPLocation[]> {
+		if (!this.isReady()) {
+			throw new Error('Client not initialized');
+		}
+
+		try {
+			await new Promise(resolve => setTimeout(resolve, 100));
+			
+			const document = await this.getDocument(uri);
+			const vscodePosition = new vscode.Position(position.line, position.character);
+
+			const declarations = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
+				'vscode.executeDeclarationProvider',
+				document.uri,
+				vscodePosition
+			);
+
+			if (!declarations || declarations.length === 0) {
+				return [];
+			}
+
+			return this.convertLocations(declarations);
+		} catch (error) {
+			console.error('Error getting declarations:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Get implementation locations using VSCode's built-in implementation provider
+	 */
+	public async getImplementation(uri: string, position: LSPPosition): Promise<LSPLocation[]> {
+		if (!this.isReady()) {
+			throw new Error('Client not initialized');
+		}
+
+		try {
+			await new Promise(resolve => setTimeout(resolve, 100));
+			
+			const document = await this.getDocument(uri);
+			const vscodePosition = new vscode.Position(position.line, position.character);
+
+			const implementations = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
+				'vscode.executeImplementationProvider',
+				document.uri,
+				vscodePosition
+			);
+
+			if (!implementations || implementations.length === 0) {
+				return [];
+			}
+
+			return this.convertLocations(implementations);
+		} catch (error) {
+			console.error('Error getting implementations:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Prepare call hierarchy items at a position
+	 */
+	public async prepareCallHierarchy(uri: string, position: LSPPosition): Promise<LSPCallHierarchyItem[]> {
+		if (!this.isReady()) {
+			throw new Error('Client not initialized');
+		}
+
+		try {
+			const document = await this.getDocument(uri);
+			const vscodePosition = new vscode.Position(position.line, position.character);
+
+			const items = await vscode.commands.executeCommand<vscode.CallHierarchyItem[]>(
+				'vscode.prepareCallHierarchy',
+				document.uri,
+				vscodePosition
+			);
+
+			if (!items || items.length === 0) {
+				return [];
+			}
+
+			return items.map(item => this.convertCallHierarchyItem(item));
+		} catch (error) {
+			console.error('Error preparing call hierarchy:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Get incoming calls for a call hierarchy item
+	 */
+	public async getCallHierarchyIncomingCalls(item: LSPCallHierarchyItem): Promise<LSPCallHierarchyIncomingCall[]> {
+		if (!this.isReady()) {
+			throw new Error('Client not initialized');
+		}
+
+		try {
+			// Convert back to VSCode format
+			const vscodeItem: vscode.CallHierarchyItem = {
+				name: item.name,
+				kind: item.kind,
+				tags: item.tags,
+				detail: item.detail,
+				uri: vscode.Uri.parse(item.uri),
+				range: new vscode.Range(
+					new vscode.Position(item.range.start.line, item.range.start.character),
+					new vscode.Position(item.range.end.line, item.range.end.character)
+				),
+				selectionRange: new vscode.Range(
+					new vscode.Position(item.selectionRange.start.line, item.selectionRange.start.character),
+					new vscode.Position(item.selectionRange.end.line, item.selectionRange.end.character)
+				)
+			};
+
+			const incomingCalls = await vscode.commands.executeCommand<vscode.CallHierarchyIncomingCall[]>(
+				'vscode.executeCallHierarchyIncomingCallsProvider',
+				vscodeItem
+			);
+
+			if (!incomingCalls || incomingCalls.length === 0) {
+				return [];
+			}
+
+			return incomingCalls.map(call => ({
+				from: this.convertCallHierarchyItem(call.from),
+				fromRanges: call.fromRanges.map(range => ({
+					start: { line: range.start.line, character: range.start.character },
+					end: { line: range.end.line, character: range.end.character }
+				}))
+			}));
+		} catch (error) {
+			console.error('Error getting incoming calls:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Get outgoing calls for a call hierarchy item
+	 */
+	public async getCallHierarchyOutgoingCalls(item: LSPCallHierarchyItem): Promise<LSPCallHierarchyOutgoingCall[]> {
+		if (!this.isReady()) {
+			throw new Error('Client not initialized');
+		}
+
+		try {
+			// Convert back to VSCode format
+			const vscodeItem: vscode.CallHierarchyItem = {
+				name: item.name,
+				kind: item.kind,
+				tags: item.tags,
+				detail: item.detail,
+				uri: vscode.Uri.parse(item.uri),
+				range: new vscode.Range(
+					new vscode.Position(item.range.start.line, item.range.start.character),
+					new vscode.Position(item.range.end.line, item.range.end.character)
+				),
+				selectionRange: new vscode.Range(
+					new vscode.Position(item.selectionRange.start.line, item.selectionRange.start.character),
+					new vscode.Position(item.selectionRange.end.line, item.selectionRange.end.character)
+				)
+			};
+
+			const outgoingCalls = await vscode.commands.executeCommand<vscode.CallHierarchyOutgoingCall[]>(
+				'vscode.executeCallHierarchyOutgoingCallsProvider',
+				vscodeItem
+			);
+
+			if (!outgoingCalls || outgoingCalls.length === 0) {
+				return [];
+			}
+
+			return outgoingCalls.map(call => ({
+				to: this.convertCallHierarchyItem(call.to),
+				fromRanges: call.fromRanges.map(range => ({
+					start: { line: range.start.line, character: range.start.character },
+					end: { line: range.end.line, character: range.end.character }
+				}))
+			}));
+		} catch (error) {
+			console.error('Error getting outgoing calls:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Prepare type hierarchy items at a position
+	 */
+	public async prepareTypeHierarchy(uri: string, position: LSPPosition): Promise<LSPTypeHierarchyItem[]> {
+		if (!this.isReady()) {
+			throw new Error('Client not initialized');
+		}
+
+		try {
+			const document = await this.getDocument(uri);
+			const vscodePosition = new vscode.Position(position.line, position.character);
+
+			const items = await vscode.commands.executeCommand<vscode.TypeHierarchyItem[]>(
+				'vscode.prepareTypeHierarchy',
+				document.uri,
+				vscodePosition
+			);
+
+			if (!items || items.length === 0) {
+				return [];
+			}
+
+			return items.map(item => this.convertTypeHierarchyItem(item));
+		} catch (error) {
+			console.error('Error preparing type hierarchy:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Get supertypes for a type hierarchy item
+	 */
+	public async getTypeHierarchySupertypes(item: LSPTypeHierarchyItem): Promise<LSPTypeHierarchyItem[]> {
+		if (!this.isReady()) {
+			throw new Error('Client not initialized');
+		}
+
+		try {
+			// Convert back to VSCode format
+			const vscodeItem: vscode.TypeHierarchyItem = {
+				name: item.name,
+				kind: item.kind,
+				tags: item.tags,
+				detail: item.detail,
+				uri: vscode.Uri.parse(item.uri),
+				range: new vscode.Range(
+					new vscode.Position(item.range.start.line, item.range.start.character),
+					new vscode.Position(item.range.end.line, item.range.end.character)
+				),
+				selectionRange: new vscode.Range(
+					new vscode.Position(item.selectionRange.start.line, item.selectionRange.start.character),
+					new vscode.Position(item.selectionRange.end.line, item.selectionRange.end.character)
+				)
+			};
+
+			const supertypes = await vscode.commands.executeCommand<vscode.TypeHierarchyItem[]>(
+				'vscode.provideSupertypes',
+				vscodeItem
+			);
+
+			if (!supertypes || supertypes.length === 0) {
+				return [];
+			}
+
+			return supertypes.map(supertype => this.convertTypeHierarchyItem(supertype));
+		} catch (error) {
+			console.error('Error getting supertypes:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Get subtypes for a type hierarchy item
+	 */
+	public async getTypeHierarchySubtypes(item: LSPTypeHierarchyItem): Promise<LSPTypeHierarchyItem[]> {
+		if (!this.isReady()) {
+			throw new Error('Client not initialized');
+		}
+
+		try {
+			// Convert back to VSCode format
+			const vscodeItem: vscode.TypeHierarchyItem = {
+				name: item.name,
+				kind: item.kind,
+				tags: item.tags,
+				detail: item.detail,
+				uri: vscode.Uri.parse(item.uri),
+				range: new vscode.Range(
+					new vscode.Position(item.range.start.line, item.range.start.character),
+					new vscode.Position(item.range.end.line, item.range.end.character)
+				),
+				selectionRange: new vscode.Range(
+					new vscode.Position(item.selectionRange.start.line, item.selectionRange.start.character),
+					new vscode.Position(item.selectionRange.end.line, item.selectionRange.end.character)
+				)
+			};
+
+			const subtypes = await vscode.commands.executeCommand<vscode.TypeHierarchyItem[]>(
+				'vscode.provideSubtypes',
+				vscodeItem
+			);
+
+			if (!subtypes || subtypes.length === 0) {
+				return [];
+			}
+
+			return subtypes.map(subtype => this.convertTypeHierarchyItem(subtype));
+		} catch (error) {
+			console.error('Error getting subtypes:', error);
+			return [];
+		}
+	}
+
+	/**
+	 * Helper method to convert VSCode locations to our format
+	 */
+	private convertLocations(locations: (vscode.Location | vscode.LocationLink)[]): LSPLocation[] {
+		return locations.map(loc => {
+			if ('targetUri' in loc) {
+				// LocationLink
+				const targetUri = loc.targetUri.toString();
+				const range = loc.targetRange || loc.targetSelectionRange;
+				
+				if (!range) {
+					return {
+						uri: targetUri,
+						range: {
+							start: { line: 0, character: 0 },
+							end: { line: 0, character: 0 }
+						}
+					};
+				}
+				
+				return {
+					uri: targetUri,
+					range: {
+						start: {
+							line: range.start.line,
+							character: range.start.character
+						},
+						end: {
+							line: range.end.line,
+							character: range.end.character
+						}
+					}
+				};
+			} else {
+				// Location
+				const location = loc as vscode.Location;
+				return {
+					uri: location.uri.toString(),
+					range: {
+						start: {
+							line: location.range.start.line,
+							character: location.range.start.character
+						},
+						end: {
+							line: location.range.end.line,
+							character: location.range.end.character
+						}
+					}
+				};
+			}
+		});
+	}
+
+	/**
+	 * Helper method to convert VSCode call hierarchy item to our format
+	 */
+	private convertCallHierarchyItem(item: vscode.CallHierarchyItem): LSPCallHierarchyItem {
+		return {
+			name: item.name,
+			kind: item.kind,
+			tags: item.tags ? [...item.tags] : undefined,
+			detail: item.detail,
+			uri: item.uri.toString(),
+			range: {
+				start: {
+					line: item.range.start.line,
+					character: item.range.start.character
+				},
+				end: {
+					line: item.range.end.line,
+					character: item.range.end.character
+				}
+			},
+			selectionRange: {
+				start: {
+					line: item.selectionRange.start.line,
+					character: item.selectionRange.start.character
+				},
+				end: {
+					line: item.selectionRange.end.line,
+					character: item.selectionRange.end.character
+				}
+			}
+		};
+	}
+
+	/**
+	 * Helper method to convert VSCode type hierarchy item to our format
+	 */
+	private convertTypeHierarchyItem(item: vscode.TypeHierarchyItem): LSPTypeHierarchyItem {
+		return {
+			name: item.name,
+			kind: item.kind,
+			tags: item.tags ? [...item.tags] : undefined,
+			detail: item.detail,
+			uri: item.uri.toString(),
+			range: {
+				start: {
+					line: item.range.start.line,
+					character: item.range.start.character
+				},
+				end: {
+					line: item.range.end.line,
+					character: item.range.end.character
+				}
+			},
+			selectionRange: {
+				start: {
+					line: item.selectionRange.start.line,
+					character: item.selectionRange.start.character
+				},
+				end: {
+					line: item.selectionRange.end.line,
+					character: item.selectionRange.end.character
+				}
+			}
+		};
 	}
 
 	/**
