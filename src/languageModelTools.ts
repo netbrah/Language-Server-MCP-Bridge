@@ -986,9 +986,11 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                             sections.push(`\n... and ${references.length - 10} more`);
                         }
                         hasAnyData = true;
+                    } else {
+                        console.log('lsp_explore_symbol: No references found');
                     }
                 } catch (error) {
-                    // Silently ignore
+                    console.error('lsp_explore_symbol: Error getting references:', error);
                 }
 
                 // Section 4: Implementations
@@ -1009,12 +1011,15 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                     let hasCallHierarchyData = false;
                     try {
                         const callHierarchyItems = await languageClient.prepareCallHierarchy(input.uri, position);
+                        console.log(`lsp_explore_symbol: prepareCallHierarchy returned ${callHierarchyItems.length} items`);
                         if (callHierarchyItems.length > 0) {
                             const item = callHierarchyItems[0];
+                            console.log(`lsp_explore_symbol: Using call hierarchy item:`, JSON.stringify(item, null, 2));
                             
                             // Get incoming calls
                             try {
                                 const incomingCalls = await languageClient.getCallHierarchyIncomingCalls(item);
+                                console.log(`lsp_explore_symbol: getCallHierarchyIncomingCalls returned ${incomingCalls.length} calls`);
                                 if (incomingCalls.length > 0) {
                                     sections.push(`\n**Incoming Calls (${incomingCalls.length}):**`);
                                     incomingCalls.slice(0, 5).forEach((call, idx) => {
@@ -1029,12 +1034,13 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                                     hasCallHierarchyData = true;
                                 }
                             } catch (error) {
-                                // Silently ignore
+                                console.error('lsp_explore_symbol: Error getting incoming calls:', error);
                             }
 
                             // Get outgoing calls
                             try {
                                 const outgoingCalls = await languageClient.getCallHierarchyOutgoingCalls(item);
+                                console.log(`lsp_explore_symbol: getCallHierarchyOutgoingCalls returned ${outgoingCalls.length} calls`);
                                 if (outgoingCalls.length > 0) {
                                     sections.push(`\n**Outgoing Calls (${outgoingCalls.length}):**`);
                                     outgoingCalls.slice(0, 5).forEach((call, idx) => {
@@ -1049,7 +1055,7 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                                     hasCallHierarchyData = true;
                                 }
                             } catch (error) {
-                                // Silently ignore
+                                console.error('lsp_explore_symbol: Error getting outgoing calls:', error);
                             }
                             
                             // If call hierarchy preparation succeeded but returned no calls, provide explanation

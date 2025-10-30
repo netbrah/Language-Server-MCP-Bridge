@@ -795,6 +795,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
+			console.log('getCallHierarchyIncomingCalls: Converting item:', JSON.stringify(item, null, 2));
 			// Convert back to VSCode format using the proper constructor
 			const vscodeItem = new vscode.CallHierarchyItem(
 				item.kind,
@@ -816,11 +817,13 @@ export class VSCodeLanguageClient implements LanguageClient {
 				(vscodeItem as any).tags = item.tags;
 			}
 
+			console.log('getCallHierarchyIncomingCalls: Calling vscode.executeCallHierarchyIncomingCallsProvider');
 			const incomingCalls = await vscode.commands.executeCommand<vscode.CallHierarchyIncomingCall[]>(
 				'vscode.executeCallHierarchyIncomingCallsProvider',
 				vscodeItem
 			);
 
+			console.log(`getCallHierarchyIncomingCalls: Received ${incomingCalls?.length || 0} incoming calls`);
 			if (!incomingCalls || incomingCalls.length === 0) {
 				return [];
 			}
