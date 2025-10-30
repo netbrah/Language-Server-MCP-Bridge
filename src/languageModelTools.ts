@@ -898,8 +898,31 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                 const sections: string[] = [];
                 let hasAnyData = false;
                 
+                // Section 0: Document Structure Context (helps understand symbol location)
+                let documentSymbols: any[] = [];
+                let symbolContext: string | null = null;
+                try {
+                    documentSymbols = await languageClient.getDocumentSymbols(input.uri);
+                    if (documentSymbols.length > 0) {
+                        // Find the symbol at the current position
+                        const targetSymbol = findSymbolAtPosition(documentSymbols, position);
+                        if (targetSymbol) {
+                            symbolContext = formatSymbolContext(targetSymbol, documentSymbols);
+                        }
+                    }
+                } catch (error) {
+                    // Silently ignore
+                }
+                
                 // Section 1: Basic Symbol Information
                 sections.push('## SYMBOL INFORMATION');
+                
+                // Add document structure context if available
+                if (symbolContext) {
+                    sections.push(`\n**Document Context:**\n${symbolContext}`);
+                    hasAnyData = true;
+                }
+                
                 try {
                     const hover = await languageClient.getHover(input.uri, position);
                     if (hover) {
@@ -1131,6 +1154,122 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
     }));
 
     return disposables;
+}
+
+/**
+ * Find the symbol at a specific position in the document symbol tree
+ */
+function findSymbolAtPosition(symbols: any[], position: { line: number; character: number }): any | null {
+    for (const symbol of symbols) {
+        const range = symbol.range || symbol.location?.range;
+        if (range) {
+            const startLine = range.start.line;
+            const endLine = range.end.line;
+            const startChar = range.start.character;
+            const endChar = range.end.character;
+            
+            // Check if position is within this symbol's range
+            if (position.line >= startLine && position.line <= endLine) {
+                if (position.line === startLine && position.character < startChar) {
+                    continue;
+                }
+                if (position.line === endLine && position.character > endChar) {
+                    continue;
+                }
+                
+                // Check children first (more specific)
+                if (symbol.children && symbol.children.length > 0) {
+                    const childResult = findSymbolAtPosition(symbol.children, position);
+                    if (childResult) {
+                        return childResult;
+                    }
+                }
+                
+                // This symbol contains the position
+                return symbol;
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Format symbol context showing where the symbol is in the document structure
+ */
+function formatSymbolContext(symbol: any, allSymbols: any[]): string {
+    const kindStr = getSymbolKindString(symbol.kind);
+    const line = symbol.range?.start.line || symbol.location?.range?.start.line;
+    const lineNum = line !== undefined ? line + 1 : '?';
+    
+    let context = `Symbol: \`${symbol.name}\` (${kindStr}) at line ${lineNum}`;
+    
+    // Find parent context
+    const parent = findParentSymbol(symbol, allSymbols);
+    if (parent) {
+        const parentKind = getSymbolKindString(parent.kind);
+        context += `\nParent: \`${parent.name}\` (${parentKind})`;
+    }
+    
+    // Find siblings (other symbols at same level)
+    const siblings = findSiblings(symbol, allSymbols);
+    if (siblings.length > 0) {
+        context += `\nSiblings: ${siblings.length} other symbols at same level`;
+        
+        // Show immediate neighbors (before/after)
+        const symbolIndex = siblings.findIndex(s => s.name === symbol.name && s.kind === symbol.kind);
+        if (symbolIndex > 0) {
+            const before = siblings[symbolIndex - 1];
+            context += `\n  - Before: \`${before.name}\` (${getSymbolKindString(before.kind)})`;
+        }
+        if (symbolIndex < siblings.length - 1 && symbolIndex !== -1) {
+            const after = siblings[symbolIndex + 1];
+            context += `\n  - After: \`${after.name}\` (${getSymbolKindString(after.kind)})`;
+        }
+    }
+    
+    return context;
+}
+
+/**
+ * Find the parent symbol of a given symbol
+ */
+function findParentSymbol(targetSymbol: any, symbols: any[], parent: any = null): any | null {
+    for (const symbol of symbols) {
+        if (symbol.children && symbol.children.length > 0) {
+            // Check if target is a direct child
+            const isDirectChild = symbol.children.some((child: any) => 
+                child.name === targetSymbol.name && 
+                child.kind === targetSymbol.kind &&
+                child.range?.start.line === targetSymbol.range?.start.line
+            );
+            
+            if (isDirectChild) {
+                return symbol;
+            }
+            
+            // Recursively search in children
+            const result = findParentSymbol(targetSymbol, symbol.children, symbol);
+            if (result) {
+                return result;
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Find sibling symbols (at the same level as the target)
+ */
+function findSiblings(targetSymbol: any, symbols: any[]): any[] {
+    // Find the parent
+    const parent = findParentSymbol(targetSymbol, symbols);
+    
+    if (parent && parent.children) {
+        return parent.children;
+    }
+    
+    // If no parent, siblings are top-level symbols
+    return symbols;
 }
 
 /**
