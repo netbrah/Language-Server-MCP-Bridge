@@ -949,10 +949,11 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                     // Silently ignore
                 }
 
-                // Section 3: References
+                // Section 3: References (store for potential call hierarchy fallback)
                 sections.push('\n\n## USAGE');
+                let references: any[] = [];
                 try {
-                    const references = await languageClient.getReferences(input.uri, position, true);
+                    references = await languageClient.getReferences(input.uri, position, true);
                     if (references.length > 0) {
                         sections.push(`\n**References:** ${references.length} locations found`);
                         if (references.length <= 10) {
@@ -982,6 +983,7 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                 // Section 5: Call Hierarchy
                 if (includeCallHierarchy) {
                     sections.push('\n\n## CALL HIERARCHY');
+                    let hasCallHierarchyData = false;
                     try {
                         const callHierarchyItems = await languageClient.prepareCallHierarchy(input.uri, position);
                         if (callHierarchyItems.length > 0) {
@@ -1001,6 +1003,7 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                                         sections.push(`... and ${incomingCalls.length - 5} more`);
                                     }
                                     hasAnyData = true;
+                                    hasCallHierarchyData = true;
                                 }
                             } catch (error) {
                                 // Silently ignore
@@ -1020,9 +1023,20 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                                         sections.push(`... and ${outgoingCalls.length - 5} more`);
                                     }
                                     hasAnyData = true;
+                                    hasCallHierarchyData = true;
                                 }
                             } catch (error) {
                                 // Silently ignore
+                            }
+                            
+                            // If call hierarchy preparation succeeded but returned no calls, provide explanation
+                            if (!hasCallHierarchyData) {
+                                sections.push(`\n⚠️ **Call hierarchy not available** - The language server prepared the call hierarchy but returned no incoming or outgoing calls.`);
+                                
+                                // Suggest using references as fallback
+                                if (references.length > 0) {
+                                    sections.push(`\n💡 **Tip:** See the USAGE section above for references to this symbol, which may indicate potential callers.`);
+                                }
                             }
                         }
                     } catch (error) {
