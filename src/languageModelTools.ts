@@ -896,6 +896,7 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
 
                 const position = { line: input.line, character: input.character };
                 const sections: string[] = [];
+                let hasAnyData = false;
                 
                 // Section 1: Basic Symbol Information
                 sections.push('## SYMBOL INFORMATION');
@@ -906,38 +907,46 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                             ? hover.contents 
                             : hover.contents.value;
                         sections.push(`\n**Hover Info:**\n${hoverText}`);
+                        hasAnyData = true;
                     }
                 } catch (error) {
-                    sections.push('\n**Hover Info:** Not available');
+                    // Silently ignore - will report at end if no data
                 }
 
                 // Section 2: Definitions and Declarations
                 sections.push('\n\n## LOCATIONS');
+                let hasLocations = false;
                 try {
                     const definitions = await languageClient.getDefinition(input.uri, position);
                     if (definitions.length > 0) {
                         sections.push(`\n**Definition:** ${formatLocations(definitions)}`);
+                        hasAnyData = true;
+                        hasLocations = true;
                     }
                 } catch (error) {
-                    // Ignore
+                    // Silently ignore
                 }
 
                 try {
                     const typeDefinitions = await languageClient.getTypeDefinition(input.uri, position);
                     if (typeDefinitions.length > 0) {
                         sections.push(`**Type Definition:** ${formatLocations(typeDefinitions)}`);
+                        hasAnyData = true;
+                        hasLocations = true;
                     }
                 } catch (error) {
-                    // Ignore
+                    // Silently ignore
                 }
 
                 try {
                     const declarations = await languageClient.getDeclaration(input.uri, position);
                     if (declarations.length > 0) {
                         sections.push(`**Declaration:** ${formatLocations(declarations)}`);
+                        hasAnyData = true;
+                        hasLocations = true;
                     }
                 } catch (error) {
-                    // Ignore
+                    // Silently ignore
                 }
 
                 // Section 3: References
@@ -952,9 +961,10 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                             sections.push(formatLocations(references.slice(0, 10)));
                             sections.push(`\n... and ${references.length - 10} more`);
                         }
+                        hasAnyData = true;
                     }
                 } catch (error) {
-                    sections.push('\n**References:** Not available');
+                    // Silently ignore
                 }
 
                 // Section 4: Implementations
@@ -963,9 +973,10 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                     if (implementations.length > 0) {
                         sections.push(`\n**Implementations:** ${implementations.length} found`);
                         sections.push(formatLocations(implementations));
+                        hasAnyData = true;
                     }
                 } catch (error) {
-                    // Ignore if not applicable
+                    // Silently ignore
                 }
 
                 // Section 5: Call Hierarchy
@@ -989,9 +1000,10 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                                     if (incomingCalls.length > 5) {
                                         sections.push(`... and ${incomingCalls.length - 5} more`);
                                     }
+                                    hasAnyData = true;
                                 }
                             } catch (error) {
-                                // Ignore
+                                // Silently ignore
                             }
 
                             // Get outgoing calls
@@ -1007,13 +1019,14 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                                     if (outgoingCalls.length > 5) {
                                         sections.push(`... and ${outgoingCalls.length - 5} more`);
                                     }
+                                    hasAnyData = true;
                                 }
                             } catch (error) {
-                                // Ignore
+                                // Silently ignore
                             }
                         }
                     } catch (error) {
-                        sections.push('\n**Call Hierarchy:** Not available for this symbol');
+                        // Silently ignore
                     }
                 }
 
@@ -1036,9 +1049,10 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                                         const kindStr = getSymbolKindString(type.kind);
                                         sections.push(`${idx + 1}. ${type.name} (${kindStr}) - ${displayPath}:${type.range.start.line + 1}`);
                                     });
+                                    hasAnyData = true;
                                 }
                             } catch (error) {
-                                // Ignore
+                                // Silently ignore
                             }
 
                             // Get subtypes
@@ -1055,14 +1069,35 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                                     if (subtypes.length > 5) {
                                         sections.push(`... and ${subtypes.length - 5} more`);
                                     }
+                                    hasAnyData = true;
                                 }
                             } catch (error) {
-                                // Ignore
+                                // Silently ignore
                             }
                         }
                     } catch (error) {
-                        sections.push('\n**Type Hierarchy:** Not available for this symbol');
+                        // Silently ignore
                     }
+                }
+
+                // Check if we got any data at all
+                if (!hasAnyData) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(
+                            `# Symbol Exploration Results\n\n` +
+                            `**Location:** ${vscode.workspace.asRelativePath(vscode.Uri.parse(input.uri))}:${input.line + 1}:${input.character + 1}\n\n` +
+                            `⚠️ **No symbol information available at this position.**\n\n` +
+                            `This can happen when:\n` +
+                            `- The cursor is positioned on whitespace, comments, or an empty line\n` +
+                            `- The language server hasn't finished indexing the file\n` +
+                            `- The language server doesn't support this file type\n` +
+                            `- The position is outside of any symbol definition\n\n` +
+                            `**Suggestions:**\n` +
+                            `- Try positioning the cursor on a function name, variable, or class\n` +
+                            `- Ensure the C++ language server (clangd) is running and has indexed the file\n` +
+                            `- Check that the file compiles without errors`
+                        )
+                    ]);
                 }
 
                 // Build final response
