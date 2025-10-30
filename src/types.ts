@@ -143,6 +143,66 @@ export interface LSPParameterInformation {
 }
 
 /**
+ * LSP Call Hierarchy Item
+ */
+export interface LSPCallHierarchyItem {
+	name: string;
+	kind: number;
+	tags?: number[];
+	detail?: string;
+	uri: string;
+	range: {
+		start: LSPPosition;
+		end: LSPPosition;
+	};
+	selectionRange: {
+		start: LSPPosition;
+		end: LSPPosition;
+	};
+}
+
+/**
+ * LSP Call Hierarchy Incoming Call
+ */
+export interface LSPCallHierarchyIncomingCall {
+	from: LSPCallHierarchyItem;
+	fromRanges: Array<{
+		start: LSPPosition;
+		end: LSPPosition;
+	}>;
+}
+
+/**
+ * LSP Call Hierarchy Outgoing Call
+ */
+export interface LSPCallHierarchyOutgoingCall {
+	to: LSPCallHierarchyItem;
+	fromRanges: Array<{
+		start: LSPPosition;
+		end: LSPPosition;
+	}>;
+}
+
+/**
+ * LSP Type Hierarchy Item
+ */
+export interface LSPTypeHierarchyItem {
+	name: string;
+	kind: number;
+	tags?: number[];
+	detail?: string;
+	uri: string;
+	range: {
+		start: LSPPosition;
+		end: LSPPosition;
+	};
+	selectionRange: {
+		start: LSPPosition;
+		end: LSPPosition;
+	};
+}
+
+/**
  * MCP Position type for our tool inputs
  */
 export interface MCPPosition {
@@ -249,6 +309,74 @@ export interface SignatureHelpInput {
 }
 
 /**
+ * Input schema for lsp.typeDefinition tool
+ */
+export interface TypeDefinitionInput {
+	uri: string;
+	position: MCPPosition;
+}
+
+/**
+ * Input schema for lsp.declaration tool
+ */
+export interface DeclarationInput {
+	uri: string;
+	position: MCPPosition;
+}
+
+/**
+ * Input schema for lsp.implementation tool
+ */
+export interface ImplementationInput {
+	uri: string;
+	position: MCPPosition;
+}
+
+/**
+ * Input schema for lsp.prepareCallHierarchy tool
+ */
+export interface PrepareCallHierarchyInput {
+	uri: string;
+	position: MCPPosition;
+}
+
+/**
+ * Input schema for lsp.callHierarchyIncomingCalls tool
+ */
+export interface CallHierarchyIncomingCallsInput {
+	item: LSPCallHierarchyItem;
+}
+
+/**
+ * Input schema for lsp.callHierarchyOutgoingCalls tool
+ */
+export interface CallHierarchyOutgoingCallsInput {
+	item: LSPCallHierarchyItem;
+}
+
+/**
+ * Input schema for lsp.prepareTypeHierarchy tool
+ */
+export interface PrepareTypeHierarchyInput {
+	uri: string;
+	position: MCPPosition;
+}
+
+/**
+ * Input schema for lsp.typeHierarchySupertypes tool
+ */
+export interface TypeHierarchySupertypesInput {
+	item: LSPTypeHierarchyItem;
+}
+
+/**
+ * Input schema for lsp.typeHierarchySubtypes tool
+ */
+export interface TypeHierarchySubtypesInput {
+	item: LSPTypeHierarchyItem;
+}
+
+/**
  * Language Server client interface - abstracts VSCode's language client
  */
 export interface LanguageClient {
@@ -256,6 +384,21 @@ export interface LanguageClient {
 	 * Request definition locations for a symbol
 	 */
 	getDefinition(uri: string, position: LSPPosition): Promise<LSPLocation[]>;
+
+	/**
+	 * Request type definition locations for a symbol
+	 */
+	getTypeDefinition(uri: string, position: LSPPosition): Promise<LSPLocation[]>;
+
+	/**
+	 * Request declaration locations for a symbol
+	 */
+	getDeclaration(uri: string, position: LSPPosition): Promise<LSPLocation[]>;
+
+	/**
+	 * Request implementation locations for a symbol
+	 */
+	getImplementation(uri: string, position: LSPPosition): Promise<LSPLocation[]>;
 
 	/**
 	 * Request references for a symbol
@@ -301,6 +444,36 @@ export interface LanguageClient {
 	 * Get signature help
 	 */
 	getSignatureHelp(uri: string, position: LSPPosition, triggerKind?: number, triggerCharacter?: string): Promise<LSPSignatureHelp | null>;
+
+	/**
+	 * Prepare call hierarchy items at a position
+	 */
+	prepareCallHierarchy(uri: string, position: LSPPosition): Promise<LSPCallHierarchyItem[]>;
+
+	/**
+	 * Get incoming calls for a call hierarchy item
+	 */
+	getCallHierarchyIncomingCalls(item: LSPCallHierarchyItem): Promise<LSPCallHierarchyIncomingCall[]>;
+
+	/**
+	 * Get outgoing calls for a call hierarchy item
+	 */
+	getCallHierarchyOutgoingCalls(item: LSPCallHierarchyItem): Promise<LSPCallHierarchyOutgoingCall[]>;
+
+	/**
+	 * Prepare type hierarchy items at a position
+	 */
+	prepareTypeHierarchy(uri: string, position: LSPPosition): Promise<LSPTypeHierarchyItem[]>;
+
+	/**
+	 * Get supertypes for a type hierarchy item
+	 */
+	getTypeHierarchySupertypes(item: LSPTypeHierarchyItem): Promise<LSPTypeHierarchyItem[]>;
+
+	/**
+	 * Get subtypes for a type hierarchy item
+	 */
+	getTypeHierarchySubtypes(item: LSPTypeHierarchyItem): Promise<LSPTypeHierarchyItem[]>;
 
 	/**
 	 * Check if the language client is ready

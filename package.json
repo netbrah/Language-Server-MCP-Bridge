@@ -461,6 +461,355 @@
             "character"
           ]
         }
+      },
+      {
+        "name": "lsp_type_definition",
+        "tags": [
+          "lsp",
+          "type",
+          "definition",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "type_definition",
+        "displayName": "Get Type Definition",
+        "modelDescription": "Find the type definition location of a symbol at a specific position. Use this AUTOMATICALLY when the user asks about type information, where a type is defined, or needs to understand the underlying type of a variable. Particularly useful for TypeScript, Java, and other statically-typed languages.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.ts)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            }
+          },
+          "required": [
+            "uri",
+            "line",
+            "character"
+          ]
+        }
+      },
+      {
+        "name": "lsp_declaration",
+        "tags": [
+          "lsp",
+          "declaration",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "declaration",
+        "displayName": "Get Symbol Declaration",
+        "modelDescription": "Find the declaration location of a symbol at a specific position. Use this AUTOMATICALLY when the user asks where a symbol is declared. Declarations differ from definitions in languages where they can be separate (e.g., C/C++ headers vs implementations).",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.h)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            }
+          },
+          "required": [
+            "uri",
+            "line",
+            "character"
+          ]
+        }
+      },
+      {
+        "name": "lsp_implementation",
+        "tags": [
+          "lsp",
+          "implementation",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "implementation",
+        "displayName": "Get Symbol Implementation",
+        "modelDescription": "Find all implementations of an interface or abstract class at a specific position. Use this AUTOMATICALLY when the user asks about implementations, concrete classes, or wants to see which classes implement an interface. Essential for understanding polymorphic code.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/interface.java)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            }
+          },
+          "required": [
+            "uri",
+            "line",
+            "character"
+          ]
+        }
+      },
+      {
+        "name": "lsp_prepare_call_hierarchy",
+        "tags": [
+          "lsp",
+          "call-hierarchy",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "call_hierarchy",
+        "displayName": "Prepare Call Hierarchy",
+        "modelDescription": "Prepare call hierarchy items at a specific position to explore function/method call relationships. Use this AUTOMATICALLY when the user asks about call chains, who calls this function, or what this function calls. Returns items that can be used with incoming/outgoing call tools.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            }
+          },
+          "required": [
+            "uri",
+            "line",
+            "character"
+          ]
+        }
+      },
+      {
+        "name": "lsp_call_hierarchy_incoming",
+        "tags": [
+          "lsp",
+          "call-hierarchy",
+          "incoming",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "incoming_calls",
+        "displayName": "Get Incoming Calls",
+        "modelDescription": "Get all incoming calls (callers) for a call hierarchy item. Use this AUTOMATICALLY when the user asks who calls a function, where a function is used, or wants to trace back the call chain. Requires a call hierarchy item from lsp_prepare_call_hierarchy.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "object",
+              "description": "Call hierarchy item from lsp_prepare_call_hierarchy"
+            }
+          },
+          "required": [
+            "item"
+          ]
+        }
+      },
+      {
+        "name": "lsp_call_hierarchy_outgoing",
+        "tags": [
+          "lsp",
+          "call-hierarchy",
+          "outgoing",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "outgoing_calls",
+        "displayName": "Get Outgoing Calls",
+        "modelDescription": "Get all outgoing calls (callees) for a call hierarchy item. Use this AUTOMATICALLY when the user asks what functions are called, dependencies, or wants to trace forward the call chain. Requires a call hierarchy item from lsp_prepare_call_hierarchy.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "object",
+              "description": "Call hierarchy item from lsp_prepare_call_hierarchy"
+            }
+          },
+          "required": [
+            "item"
+          ]
+        }
+      },
+      {
+        "name": "lsp_prepare_type_hierarchy",
+        "tags": [
+          "lsp",
+          "type-hierarchy",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "type_hierarchy",
+        "displayName": "Prepare Type Hierarchy",
+        "modelDescription": "Prepare type hierarchy items at a specific position to explore type inheritance relationships. Use this AUTOMATICALLY when the user asks about class hierarchy, inheritance, parent/child classes, or type relationships. Returns items that can be used with supertypes/subtypes tools.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/class.java)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            }
+          },
+          "required": [
+            "uri",
+            "line",
+            "character"
+          ]
+        }
+      },
+      {
+        "name": "lsp_type_hierarchy_supertypes",
+        "tags": [
+          "lsp",
+          "type-hierarchy",
+          "supertypes",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "supertypes",
+        "displayName": "Get Supertypes",
+        "modelDescription": "Get all supertypes (parent classes, interfaces) for a type hierarchy item. Use this AUTOMATICALLY when the user asks about parent classes, what a class extends/implements, or base types. Requires a type hierarchy item from lsp_prepare_type_hierarchy.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "object",
+              "description": "Type hierarchy item from lsp_prepare_type_hierarchy"
+            }
+          },
+          "required": [
+            "item"
+          ]
+        }
+      },
+      {
+        "name": "lsp_type_hierarchy_subtypes",
+        "tags": [
+          "lsp",
+          "type-hierarchy",
+          "subtypes",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "subtypes",
+        "displayName": "Get Subtypes",
+        "modelDescription": "Get all subtypes (child classes, implementations) for a type hierarchy item. Use this AUTOMATICALLY when the user asks about child classes, what implements/extends a class, or derived types. Requires a type hierarchy item from lsp_prepare_type_hierarchy.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "object",
+              "description": "Type hierarchy item from lsp_prepare_type_hierarchy"
+            }
+          },
+          "required": [
+            "item"
+          ]
+        }
+      },
+      {
+        "name": "lsp_explore_symbol",
+        "tags": [
+          "lsp",
+          "explore",
+          "comprehensive",
+          "super-tool",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "explore",
+        "displayName": "Explore Symbol Comprehensively",
+        "modelDescription": "SUPER TOOL: Automatically explores a symbol at a position by intelligently calling multiple LSP tools and aggregating results. Use this AUTOMATICALLY when the user asks broad questions like 'tell me about this symbol', 'analyze this function', 'what is this', or wants comprehensive information. This tool orchestrates: hover info, definitions, references, implementations, call hierarchy (who calls/what it calls), and type hierarchy (parent/child types). Returns a complete analysis without requiring multiple tool calls or understanding prepare/query patterns.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "File URI (e.g., file:///path/to/file.py)"
+            },
+            "line": {
+              "type": "number",
+              "description": "Line number (0-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Character offset in line (0-based)"
+            },
+            "depth": {
+              "type": "number",
+              "description": "Exploration depth (default: 1, not yet fully implemented)"
+            },
+            "includeCallHierarchy": {
+              "type": "boolean",
+              "description": "Include call hierarchy analysis (default: true)"
+            },
+            "includeTypeHierarchy": {
+              "type": "boolean",
+              "description": "Include type hierarchy analysis (default: true)"
+            }
+          },
+          "required": [
+            "uri",
+            "line",
+            "character"
+          ]
+        }
+      },
+      {
+        "name": "lsp_explore_references",
+        "tags": [
+          "lsp",
+          "references",
+          "search",
+          "usage",
+          "vscode_editing"
+        ],
+        "toolReferenceName": "explore_references",
+        "displayName": "Explore Symbol References",
+        "modelDescription": "INTELLIGENT TOOL: Finds all references to a symbol by name across the workspace. Use this AUTOMATICALLY when the user asks 'where is X used', 'find usages of X', 'show me references to X', or provides a symbol name to explore. Combines workspace symbol search with references lookup - no need for position/URI. Just provide the symbol name (e.g., 'Keyserver::secondaryIsAPrimary' or 'myFunction'). Returns organized list of all references grouped by file with line numbers. Perfect for understanding symbol usage patterns without knowing exact locations.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Symbol name to search for (e.g., 'ClassName::methodName', 'functionName', 'variableName'). Can be fully qualified or partial name."
+            },
+            "maxResults": {
+              "type": "number",
+              "description": "Maximum number of references to display (default: 100)"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
       }
     ]
   },
