@@ -981,18 +981,55 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
                 }
 
                 // Section 3: References (store for potential call hierarchy fallback)
+                // Uses enhanced formatting similar to lsp_explore_references
                 sections.push('\n\n## USAGE');
                 let references: any[] = [];
                 try {
                     references = await languageClient.getReferences(input.uri, position, true);
                     if (references.length > 0) {
-                        sections.push(`\n**References:** ${references.length} locations found`);
-                        if (references.length <= 10) {
-                            sections.push(formatLocations(references));
-                        } else {
-                            sections.push(formatLocations(references.slice(0, 10)));
-                            sections.push(`\n... and ${references.length - 10} more`);
+                        sections.push(`\n**References:** ${references.length} locations found\n`);
+                        
+                        // Group references by file (like lsp_explore_references)
+                        const referencesByFile = new Map<string, Array<{line: number, character: number}>>();
+                        for (const ref of references) {
+                            const uri = vscode.Uri.parse(ref.uri);
+                            const relativePath = vscode.workspace.asRelativePath(uri);
+                            
+                            if (!referencesByFile.has(relativePath)) {
+                                referencesByFile.set(relativePath, []);
+                            }
+                            referencesByFile.get(relativePath)!.push({
+                                line: ref.range.start.line,
+                                character: ref.range.start.character
+                            });
                         }
+
+                        // Sort files and format output
+                        const sortedFiles = Array.from(referencesByFile.keys()).sort();
+                        const maxRefsToShow = 50; // Show up to 50 references in explore_symbol
+                        let displayedCount = 0;
+                        
+                        for (const file of sortedFiles) {
+                            const refs = referencesByFile.get(file)!;
+                            // Sort by line number
+                            refs.sort((a, b) => a.line - b.line);
+                            
+                            sections.push(`\n**${file}** (${refs.length} reference${refs.length > 1 ? 's' : ''}):`);
+                            
+                            for (const ref of refs) {
+                                if (displayedCount >= maxRefsToShow) {
+                                    sections.push(`\n... and ${references.length - displayedCount} more references`);
+                                    break;
+                                }
+                                sections.push(`  Line ${ref.line + 1}:${ref.character + 1}`);
+                                displayedCount++;
+                            }
+                            
+                            if (displayedCount >= maxRefsToShow) {
+                                break;
+                            }
+                        }
+                        
                         hasAnyData = true;
                     } else {
                         console.log('lsp_explore_symbol: No references found');
