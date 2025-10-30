@@ -514,6 +514,362 @@ export function registerLanguageModelTools(languageClient: VSCodeLanguageClient)
         }
     }));
 
+    // Register lsp_type_definition tool
+    disposables.push(vscode.lm.registerTool('lsp_type_definition', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<ToolPositionInput>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                const locations = await languageClient.getTypeDefinition(input.uri, {
+                    line: input.line,
+                    character: input.character
+                });
+
+                if (locations.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('No type definition found for symbol at the specified position')
+                    ]);
+                }
+
+                const response = `Found ${locations.length} type definition(s):\n\n` +
+                    locations.map((loc, index) => {
+                        const uri = vscode.Uri.parse(loc.uri);
+                        const displayPath = vscode.workspace.asRelativePath(uri);
+                        return `${index + 1}. ${displayPath}:${loc.range.start.line + 1}:${loc.range.start.character + 1}`;
+                    }).join('\n');
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error getting type definition: ${error}`)
+                ]);
+            }
+        }
+    }));
+
+    // Register lsp_declaration tool
+    disposables.push(vscode.lm.registerTool('lsp_declaration', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<ToolPositionInput>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                const locations = await languageClient.getDeclaration(input.uri, {
+                    line: input.line,
+                    character: input.character
+                });
+
+                if (locations.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('No declaration found for symbol at the specified position')
+                    ]);
+                }
+
+                const response = `Found ${locations.length} declaration(s):\n\n` +
+                    locations.map((loc, index) => {
+                        const uri = vscode.Uri.parse(loc.uri);
+                        const displayPath = vscode.workspace.asRelativePath(uri);
+                        return `${index + 1}. ${displayPath}:${loc.range.start.line + 1}:${loc.range.start.character + 1}`;
+                    }).join('\n');
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error getting declaration: ${error}`)
+                ]);
+            }
+        }
+    }));
+
+    // Register lsp_implementation tool
+    disposables.push(vscode.lm.registerTool('lsp_implementation', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<ToolPositionInput>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                const locations = await languageClient.getImplementation(input.uri, {
+                    line: input.line,
+                    character: input.character
+                });
+
+                if (locations.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('No implementations found for symbol at the specified position')
+                    ]);
+                }
+
+                const response = `Found ${locations.length} implementation(s):\n\n` +
+                    locations.map((loc, index) => {
+                        const uri = vscode.Uri.parse(loc.uri);
+                        const displayPath = vscode.workspace.asRelativePath(uri);
+                        return `${index + 1}. ${displayPath}:${loc.range.start.line + 1}:${loc.range.start.character + 1}`;
+                    }).join('\n');
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error getting implementations: ${error}`)
+                ]);
+            }
+        }
+    }));
+
+    // Register lsp_prepare_call_hierarchy tool
+    disposables.push(vscode.lm.registerTool('lsp_prepare_call_hierarchy', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<ToolPositionInput>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                const items = await languageClient.prepareCallHierarchy(input.uri, {
+                    line: input.line,
+                    character: input.character
+                });
+
+                if (items.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('No call hierarchy items found at the specified position')
+                    ]);
+                }
+
+                const response = `Found ${items.length} call hierarchy item(s):\n\n` +
+                    items.map((item, index) => {
+                        const uri = vscode.Uri.parse(item.uri);
+                        const displayPath = vscode.workspace.asRelativePath(uri);
+                        const kindStr = getSymbolKindString(item.kind);
+                        return `${index + 1}. ${item.name} (${kindStr}) - ${displayPath}:${item.range.start.line + 1}`;
+                    }).join('\n') +
+                    '\n\nUse the returned items with lsp_call_hierarchy_incoming or lsp_call_hierarchy_outgoing to explore call relationships.';
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error preparing call hierarchy: ${error}`)
+                ]);
+            }
+        }
+    }));
+
+    // Register lsp_call_hierarchy_incoming tool
+    disposables.push(vscode.lm.registerTool('lsp_call_hierarchy_incoming', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<any>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                const calls = await languageClient.getCallHierarchyIncomingCalls(input.item);
+
+                if (calls.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('No incoming calls found for the specified item')
+                    ]);
+                }
+
+                const response = `Found ${calls.length} incoming call(s):\n\n` +
+                    calls.map((call, index) => {
+                        const uri = vscode.Uri.parse(call.from.uri);
+                        const displayPath = vscode.workspace.asRelativePath(uri);
+                        const kindStr = getSymbolKindString(call.from.kind);
+                        return `${index + 1}. ${call.from.name} (${kindStr}) - ${displayPath}:${call.from.range.start.line + 1}`;
+                    }).join('\n');
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error getting incoming calls: ${error}`)
+                ]);
+            }
+        }
+    }));
+
+    // Register lsp_call_hierarchy_outgoing tool
+    disposables.push(vscode.lm.registerTool('lsp_call_hierarchy_outgoing', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<any>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                const calls = await languageClient.getCallHierarchyOutgoingCalls(input.item);
+
+                if (calls.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('No outgoing calls found for the specified item')
+                    ]);
+                }
+
+                const response = `Found ${calls.length} outgoing call(s):\n\n` +
+                    calls.map((call, index) => {
+                        const uri = vscode.Uri.parse(call.to.uri);
+                        const displayPath = vscode.workspace.asRelativePath(uri);
+                        const kindStr = getSymbolKindString(call.to.kind);
+                        return `${index + 1}. ${call.to.name} (${kindStr}) - ${displayPath}:${call.to.range.start.line + 1}`;
+                    }).join('\n');
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error getting outgoing calls: ${error}`)
+                ]);
+            }
+        }
+    }));
+
+    // Register lsp_prepare_type_hierarchy tool
+    disposables.push(vscode.lm.registerTool('lsp_prepare_type_hierarchy', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<ToolPositionInput>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                const items = await languageClient.prepareTypeHierarchy(input.uri, {
+                    line: input.line,
+                    character: input.character
+                });
+
+                if (items.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('No type hierarchy items found at the specified position')
+                    ]);
+                }
+
+                const response = `Found ${items.length} type hierarchy item(s):\n\n` +
+                    items.map((item, index) => {
+                        const uri = vscode.Uri.parse(item.uri);
+                        const displayPath = vscode.workspace.asRelativePath(uri);
+                        const kindStr = getSymbolKindString(item.kind);
+                        return `${index + 1}. ${item.name} (${kindStr}) - ${displayPath}:${item.range.start.line + 1}`;
+                    }).join('\n') +
+                    '\n\nUse the returned items with lsp_type_hierarchy_supertypes or lsp_type_hierarchy_subtypes to explore type relationships.';
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error preparing type hierarchy: ${error}`)
+                ]);
+            }
+        }
+    }));
+
+    // Register lsp_type_hierarchy_supertypes tool
+    disposables.push(vscode.lm.registerTool('lsp_type_hierarchy_supertypes', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<any>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                const supertypes = await languageClient.getTypeHierarchySupertypes(input.item);
+
+                if (supertypes.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('No supertypes found for the specified item')
+                    ]);
+                }
+
+                const response = `Found ${supertypes.length} supertype(s):\n\n` +
+                    supertypes.map((item, index) => {
+                        const uri = vscode.Uri.parse(item.uri);
+                        const displayPath = vscode.workspace.asRelativePath(uri);
+                        const kindStr = getSymbolKindString(item.kind);
+                        return `${index + 1}. ${item.name} (${kindStr}) - ${displayPath}:${item.range.start.line + 1}`;
+                    }).join('\n');
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error getting supertypes: ${error}`)
+                ]);
+            }
+        }
+    }));
+
+    // Register lsp_type_hierarchy_subtypes tool
+    disposables.push(vscode.lm.registerTool('lsp_type_hierarchy_subtypes', {
+        invoke: async (options: vscode.LanguageModelToolInvocationOptions<any>, _token: vscode.CancellationToken) => {
+            const input = options.input;
+            try {
+                if (!languageClient.isReady()) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('Error: Language client is not ready')
+                    ]);
+                }
+
+                const subtypes = await languageClient.getTypeHierarchySubtypes(input.item);
+
+                if (subtypes.length === 0) {
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart('No subtypes found for the specified item')
+                    ]);
+                }
+
+                const response = `Found ${subtypes.length} subtype(s):\n\n` +
+                    subtypes.map((item, index) => {
+                        const uri = vscode.Uri.parse(item.uri);
+                        const displayPath = vscode.workspace.asRelativePath(uri);
+                        const kindStr = getSymbolKindString(item.kind);
+                        return `${index + 1}. ${item.name} (${kindStr}) - ${displayPath}:${item.range.start.line + 1}`;
+                    }).join('\n');
+
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(response)
+                ]);
+            } catch (error) {
+                return new vscode.LanguageModelToolResult([
+                    new vscode.LanguageModelTextPart(`Error getting subtypes: ${error}`)
+                ]);
+            }
+        }
+    }));
+
     return disposables;
 }
 
