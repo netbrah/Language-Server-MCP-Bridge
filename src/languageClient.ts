@@ -1208,6 +1208,10 @@ export class VSCodeLanguageClient implements LanguageClient {
 		const isCppFile = document.languageId === 'cpp' || document.languageId === 'c';
 		const delay = isCppFile && operationType === 'symbols' ? 500 : baseDelay;
 		
+		if (delay > 200) {
+			console.log(`VSCodeLanguageClient: Waiting ${delay}ms for language server readiness (${document.languageId}, ${operationType} operation)`);
+		}
+		
 		await new Promise(resolve => setTimeout(resolve, delay));
 	}
 
