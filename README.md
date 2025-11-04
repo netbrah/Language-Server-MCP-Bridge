@@ -305,6 +305,14 @@ All tools use consistent input schemas based on LSP specifications:
 - Check VSCode's Output panel for language server logs
 - Ensure your project is properly configured (e.g., `package.json` for Node.js)
 
+### C++ / clangd Specific Notes
+- **First Query Delay**: For C++ files, the first query after opening a file may take 5-10 seconds as clangd builds the AST and preamble
+- **Workspace Symbols**: The extension automatically waits 300-500ms for language server indexing before querying
+- **Large Projects**: clangd may need additional time to index large C++ codebases. You can monitor clangd's progress in the Output panel
+- **Optimization**: The extension detects C++ files and automatically applies longer timeouts (500ms for symbol operations)
+
+**Tip for C++ Users**: If you're working with a large C++ project, give clangd a few seconds to index files when you first open them. Subsequent queries will be faster as the AST is cached.
+
 ## 🤝 Contributing
 
 1. Fork the repository

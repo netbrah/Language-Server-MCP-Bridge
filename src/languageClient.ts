@@ -49,10 +49,11 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			// Add small delay to ensure language server is ready
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
 			const document = await this.getDocument(uri);
+			
+			// Wait for language server to be ready
+			await this.waitForLanguageServerReadiness(document, 'standard');
+			
 			const vscodePosition = new vscode.Position(position.line, position.character);
 
 			// Validate position is within document bounds
@@ -68,19 +69,13 @@ export class VSCodeLanguageClient implements LanguageClient {
 			}
 
 			// Use VSCode's definition provider with timeout
-			const definitions = await Promise.race([
-				vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
-					'vscode.executeDefinitionProvider',
-					document.uri,
-					vscodePosition
-				),
-				new Promise<undefined>((_, reject) => 
-					setTimeout(() => reject(new Error('Definition request timeout')), 5000)
-				)
-			]);
+			const definitions = await this.executeCommandWithTimeout<(vscode.Location | vscode.LocationLink)[]>(
+				'vscode.executeDefinitionProvider',
+				[document.uri, vscodePosition],
+				5000
+			);
 
 			if (!definitions || definitions.length === 0) {
-				console.log('No definitions found for position', position);
 				return [];
 			}
 
@@ -514,6 +509,22 @@ export class VSCodeLanguageClient implements LanguageClient {
 	}
 
 	/**
+	 * Execute a VSCode command with timeout
+	 * @param command The command to execute
+	 * @param args Arguments for the command
+	 * @param timeoutMs Timeout in milliseconds
+	 * @returns Promise that resolves with command result or rejects on timeout
+	 */
+	private async executeCommandWithTimeout<T>(command: string, args: any[], timeoutMs: number): Promise<T | undefined> {
+		return Promise.race([
+			vscode.commands.executeCommand<T>(command, ...args),
+			new Promise<undefined>((_, reject) => 
+				setTimeout(() => reject(new Error(`${command} request timeout after ${timeoutMs}ms`)), timeoutMs)
+			)
+		]);
+	}
+
+	/**
 	 * Get workspace symbols using VSCode's built-in workspace symbol provider
 	 */
 	public async getWorkspaceSymbols(query: string): Promise<LSPSymbolInformation[]> {
@@ -522,10 +533,16 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			// Use VSCode's workspace symbol provider
-			const symbols = await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
+			// For workspace symbols, wait for language server to be ready
+			// This is especially important for C++ projects with clangd that need to build AST
+			// We use a longer delay since workspace symbols require complete indexing
+			await new Promise(resolve => setTimeout(resolve, 300));
+			
+			// Use VSCode's workspace symbol provider with a longer timeout
+			const symbols = await this.executeCommandWithTimeout<vscode.SymbolInformation[]>(
 				'vscode.executeWorkspaceSymbolProvider',
-				query
+				[query],
+				10000
 			);
 
 			if (!symbols) {
@@ -567,11 +584,15 @@ export class VSCodeLanguageClient implements LanguageClient {
 
 		try {
 			const document = await this.getDocument(uri);
+			
+			// Wait for language server to be ready - document symbols need indexing
+			await this.waitForLanguageServerReadiness(document, 'symbols');
 
-			// Use VSCode's document symbol provider
-			const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+			// Use VSCode's document symbol provider with timeout
+			const symbols = await this.executeCommandWithTimeout<vscode.DocumentSymbol[]>(
 				'vscode.executeDocumentSymbolProvider',
-				document.uri
+				[document.uri],
+				10000
 			);
 
 			if (!symbols) {
@@ -673,9 +694,11 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
 			const document = await this.getDocument(uri);
+			
+			// Wait for language server to be ready
+			await this.waitForLanguageServerReadiness(document, 'standard');
+			
 			const vscodePosition = new vscode.Position(position.line, position.character);
 
 			const typeDefinitions = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
@@ -704,9 +727,11 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
 			const document = await this.getDocument(uri);
+			
+			// Wait for language server to be ready
+			await this.waitForLanguageServerReadiness(document, 'standard');
+			
 			const vscodePosition = new vscode.Position(position.line, position.character);
 
 			const declarations = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
@@ -735,9 +760,11 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
 			const document = await this.getDocument(uri);
+			
+			// Wait for language server to be ready
+			await this.waitForLanguageServerReadiness(document, 'standard');
+			
 			const vscodePosition = new vscode.Position(position.line, position.character);
 
 			const implementations = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
@@ -1135,6 +1162,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 
 	/**
 	 * Helper method to get or open a document
+	 * When opening a document, this triggers language server indexing
 	 */
 	private async getDocument(uri: string): Promise<vscode.TextDocument> {
 		const documentUri = vscode.Uri.parse(uri);
@@ -1148,12 +1176,41 @@ export class VSCodeLanguageClient implements LanguageClient {
 			return openDoc;
 		}
 
-		// Open the document
+		// Open the document - this triggers language server to start indexing
 		try {
-			return await vscode.workspace.openTextDocument(documentUri);
+			const document = await vscode.workspace.openTextDocument(documentUri);
+			
+			// Give language server a moment to start processing the document
+			// This is especially important for C++ files with clangd which need to build AST
+			await new Promise(resolve => setTimeout(resolve, 200));
+			
+			return document;
 		} catch (error) {
 			throw new Error(`Could not open document: ${uri}`);
 		}
+	}
+	
+	/**
+	 * Wait for language server to potentially finish indexing
+	 * This is particularly important for C/C++ files with clangd
+	 * which need time to build AST and preamble
+	 */
+	private async waitForLanguageServerReadiness(document: vscode.TextDocument, operationType: 'symbols' | 'standard' = 'standard'): Promise<void> {
+		// For symbol operations (workspace/document symbols), give more time
+		// as they require complete indexing
+		const baseDelay = operationType === 'symbols' ? 300 : 100;
+		
+		// Check if this is a C/C++ file (which typically needs more time with clangd)
+		// VSCode may use 'c', 'cpp', 'c++', 'objective-c', or 'objective-cpp'
+		const isCppFile = ['c', 'cpp', 'c++', 'objective-c', 'objective-cpp'].includes(document.languageId);
+		const delay = isCppFile && operationType === 'symbols' ? 500 : baseDelay;
+		
+		// Only log for significant delays to avoid noise
+		if (delay >= 500) {
+			console.log(`VSCodeLanguageClient: Waiting ${delay}ms for ${document.languageId} language server (${operationType} operation)`);
+		}
+		
+		await new Promise(resolve => setTimeout(resolve, delay));
 	}
 
 	/**
