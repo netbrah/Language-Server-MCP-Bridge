@@ -49,10 +49,11 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			// Add small delay to ensure language server is ready
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
 			const document = await this.getDocument(uri);
+			
+			// Wait for language server to be ready
+			await this.waitForLanguageServerReadiness(document, 'standard');
+			
 			const vscodePosition = new vscode.Position(position.line, position.character);
 
 			// Validate position is within document bounds
@@ -522,15 +523,31 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			// Use VSCode's workspace symbol provider
-			const symbols = await vscode.commands.executeCommand<vscode.SymbolInformation[]>(
-				'vscode.executeWorkspaceSymbolProvider',
-				query
-			);
+			// For workspace symbols, ensure we wait a bit for language servers to be ready
+			// This is especially important for C++ projects with clangd that need to build AST
+			console.log(`getWorkspaceSymbols: Querying for "${query}"`);
+			
+			// Give language server additional time to index if needed
+			// Workspace symbols require the language server to have indexed the workspace
+			await new Promise(resolve => setTimeout(resolve, 300));
+			
+			// Use VSCode's workspace symbol provider with a longer timeout
+			const symbols = await Promise.race([
+				vscode.commands.executeCommand<vscode.SymbolInformation[]>(
+					'vscode.executeWorkspaceSymbolProvider',
+					query
+				),
+				new Promise<undefined>((_, reject) => 
+					setTimeout(() => reject(new Error('Workspace symbols request timeout')), 10000)
+				)
+			]);
 
 			if (!symbols) {
+				console.log(`getWorkspaceSymbols: No symbols found for query "${query}"`);
 				return [];
 			}
+
+			console.log(`getWorkspaceSymbols: Found ${symbols.length} symbols for query "${query}"`);
 
 			// Convert VSCode symbols to our format
 			return symbols.map(symbol => ({
@@ -567,12 +584,20 @@ export class VSCodeLanguageClient implements LanguageClient {
 
 		try {
 			const document = await this.getDocument(uri);
+			
+			// Wait for language server to be ready - document symbols need indexing
+			await this.waitForLanguageServerReadiness(document, 'symbols');
 
-			// Use VSCode's document symbol provider
-			const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-				'vscode.executeDocumentSymbolProvider',
-				document.uri
-			);
+			// Use VSCode's document symbol provider with timeout
+			const symbols = await Promise.race([
+				vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+					'vscode.executeDocumentSymbolProvider',
+					document.uri
+				),
+				new Promise<undefined>((_, reject) => 
+					setTimeout(() => reject(new Error('Document symbols request timeout')), 10000)
+				)
+			]);
 
 			if (!symbols) {
 				return [];
@@ -673,9 +698,11 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
 			const document = await this.getDocument(uri);
+			
+			// Wait for language server to be ready
+			await this.waitForLanguageServerReadiness(document, 'standard');
+			
 			const vscodePosition = new vscode.Position(position.line, position.character);
 
 			const typeDefinitions = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
@@ -704,9 +731,11 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
 			const document = await this.getDocument(uri);
+			
+			// Wait for language server to be ready
+			await this.waitForLanguageServerReadiness(document, 'standard');
+			
 			const vscodePosition = new vscode.Position(position.line, position.character);
 
 			const declarations = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
@@ -735,9 +764,11 @@ export class VSCodeLanguageClient implements LanguageClient {
 		}
 
 		try {
-			await new Promise(resolve => setTimeout(resolve, 100));
-			
 			const document = await this.getDocument(uri);
+			
+			// Wait for language server to be ready
+			await this.waitForLanguageServerReadiness(document, 'standard');
+			
 			const vscodePosition = new vscode.Position(position.line, position.character);
 
 			const implementations = await vscode.commands.executeCommand<(vscode.Location | vscode.LocationLink)[]>(
@@ -1135,6 +1166,7 @@ export class VSCodeLanguageClient implements LanguageClient {
 
 	/**
 	 * Helper method to get or open a document
+	 * When opening a document, this triggers language server indexing
 	 */
 	private async getDocument(uri: string): Promise<vscode.TextDocument> {
 		const documentUri = vscode.Uri.parse(uri);
@@ -1148,12 +1180,35 @@ export class VSCodeLanguageClient implements LanguageClient {
 			return openDoc;
 		}
 
-		// Open the document
+		// Open the document - this triggers language server to start indexing
 		try {
-			return await vscode.workspace.openTextDocument(documentUri);
+			const document = await vscode.workspace.openTextDocument(documentUri);
+			
+			// Give language server a moment to start processing the document
+			// This is especially important for C++ files with clangd which need to build AST
+			await new Promise(resolve => setTimeout(resolve, 200));
+			
+			return document;
 		} catch (error) {
 			throw new Error(`Could not open document: ${uri}`);
 		}
+	}
+	
+	/**
+	 * Wait for language server to potentially finish indexing
+	 * This is particularly important for C/C++ files with clangd
+	 * which need time to build AST and preamble
+	 */
+	private async waitForLanguageServerReadiness(document: vscode.TextDocument, operationType: 'symbols' | 'standard' = 'standard'): Promise<void> {
+		// For symbol operations (workspace/document symbols), give more time
+		// as they require complete indexing
+		const baseDelay = operationType === 'symbols' ? 300 : 100;
+		
+		// Check if this is a C/C++ file (which typically needs more time with clangd)
+		const isCppFile = document.languageId === 'cpp' || document.languageId === 'c';
+		const delay = isCppFile && operationType === 'symbols' ? 500 : baseDelay;
+		
+		await new Promise(resolve => setTimeout(resolve, delay));
 	}
 
 	/**
